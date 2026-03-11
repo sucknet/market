@@ -41,6 +41,8 @@ const SYSVAR_INSTRUCTIONS_PUBKEY = new PublicKey('Sysvar1nstructions111111111111
 const COLLECTION_FILTER =
   process.env.COLLECTION_FILTER ||
   '5scD29QSn94hLwL3GtjyReTvU1jPTKY5aF6ur6KwGx4o';
+const DEFAULT_CURRENCY_MINT =
+  process.env.DEFAULT_CURRENCY_MINT || 'So11111111111111111111111111111111111111112';
 
 const connection = new Connection(RPC_URL, 'confirmed');
 
@@ -416,7 +418,7 @@ async function buildListInstruction(params) {
   const wallet = new PublicKey(params.wallet);
   const assetPk = new PublicKey(String(params.assetMint || ''));
   const collectionPk = new PublicKey(String(params.collection || COLLECTION_FILTER));
-  const currencyMintPk = new PublicKey(String(params.currencyMint || 'CzLSujWBLyHJS2pqL5qHj79hBf7xJqBfJwbKXQ2e9Akx'));
+  const currencyMintPk = new PublicKey(String(params.currencyMint || DEFAULT_CURRENCY_MINT));
   const priceUi = Number(params.priceUi || 0);
 
   if (!Number.isFinite(priceUi) || priceUi <= 0) {
