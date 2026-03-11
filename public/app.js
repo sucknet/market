@@ -119,7 +119,7 @@ function parsePrivateKey(raw) {
 }
 
 function getActiveWalletPubkey() {
-  return activeWalletSelectEl.value || '';
+  return wallets[0]?.pubkey || '';
 }
 
 function getWalletByPubkey(pubkey) {
@@ -449,7 +449,7 @@ async function onMarketGridClick(event) {
   }
   const activeWallet = getActiveWalletPubkey();
   if (!activeWallet) {
-    alert('Add wallet then choose Active wallet for buy.');
+    alert('Add wallet first.');
     return;
   }
 
