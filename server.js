@@ -43,6 +43,7 @@ const COLLECTION_FILTER =
   '5scD29QSn94hLwL3GtjyReTvU1jPTKY5aF6ur6KwGx4o';
 const DEFAULT_CURRENCY_MINT =
   process.env.DEFAULT_CURRENCY_MINT || 'So11111111111111111111111111111111111111112';
+const MAX_BUY_ACTIVITY = Number(process.env.MAX_BUY_ACTIVITY || '5000');
 
 const connection = new Connection(RPC_URL, 'confirmed');
 
@@ -58,6 +59,7 @@ const state = {
   backfillDone: false,
   processedSignatures: new Set(),
   listingsByAddress: new Map(),
+  boughtActivities: [],
   metadataByMint: new Map(),
   accountDecodeCache: new Map(),
   txConcurrency: Math.max(2, TX_CONCURRENCY),
@@ -765,6 +767,13 @@ function applyListingEvent(event) {
   });
 }
 
+function applyBoughtEvent(event) {
+  state.boughtActivities.push(event);
+  if (state.boughtActivities.length > MAX_BUY_ACTIVITY) {
+    state.boughtActivities.splice(0, state.boughtActivities.length - MAX_BUY_ACTIVITY);
+  }
+}
+
 async function processSignature(signature, seq = 0) {
   if (state.processedSignatures.has(signature)) {
     return;
@@ -794,7 +803,8 @@ async function processSignature(signature, seq = 0) {
   const keys = [...staticKeys, ...loadedWritable, ...loadedReadonly];
   const instructions = tx.transaction.message.compiledInstructions || [];
 
-  for (const instruction of instructions) {
+  for (let ixIndex = 0; ixIndex < instructions.length; ixIndex += 1) {
+    const instruction = instructions[ixIndex];
     const programId = keys[instruction.programIdIndex];
     if (programId !== MARKETPLACE_PROGRAM_ID.toBase58()) {
       continue;
@@ -827,6 +837,7 @@ async function processSignature(signature, seq = 0) {
     const listingAddress = getKeyAt(ix, accounts, 'listing');
     const assetMint = getKeyAt(ix, accounts, 'asset');
     const seller = getKeyAt(ix, accounts, 'seller') || getKeyAt(ix, accounts, 'payer');
+    const buyer = getKeyAt(ix, accounts, 'buyer') || getKeyAt(ix, accounts, 'payer');
     const currencyMint = getKeyAt(ix, accounts, 'currency_mint');
 
     if (!listingAddress || !assetMint) {
@@ -849,13 +860,32 @@ async function processSignature(signature, seq = 0) {
     }
 
     const blockTime = tx.blockTime || 0;
+    const prevListing = state.listingsByAddress.get(listingAddress);
+    const finalPriceUi = priceUi == null ? Number(prevListing?.priceUi || 0) || null : priceUi;
+
+    if (ix.name === 'buy') {
+      applyBoughtEvent({
+        id: `${signature}:${ixIndex}:${listingAddress}`,
+        signature,
+        slot: tx.slot || 0,
+        createdAt: blockTime,
+        listingAddress,
+        assetMint,
+        collection,
+        buyer,
+        seller,
+        currencyMint,
+        priceUi: finalPriceUi,
+      });
+    }
+
     applyListingEvent({
       listingAddress,
       assetMint,
       seller,
       currencyMint,
       collection,
-      priceUi,
+      priceUi: finalPriceUi,
       status,
       createdAt: blockTime,
       slot: tx.slot || 0,
@@ -1464,6 +1494,39 @@ async function refreshLoop() {
   }
 }
 
+async function buildBoughtActivities(owners, page, limit) {
+  const ownerSet = new Set((owners || []).map((x) => String(x || '').trim()).filter(Boolean));
+  let rows = state.boughtActivities;
+  if (ownerSet.size) {
+    rows = rows.filter((x) => ownerSet.has(String(x.buyer || '').trim()));
+  }
+
+  const sorted = [...rows].sort((a, b) => {
+    const t = Number(b.createdAt || 0) - Number(a.createdAt || 0);
+    if (t !== 0) {
+      return t;
+    }
+    return Number(b.slot || 0) - Number(a.slot || 0);
+  });
+
+  const start = (page - 1) * limit;
+  const end = start + limit;
+  const pageItems = sorted.slice(start, end);
+
+  await mapConcurrent(pageItems, 8, async (item) => {
+    const meta = await fetchMetadataForMint(item.assetMint, { force: false });
+    item.name = meta?.name || item.assetMint;
+    item.image = meta?.image || null;
+    item.metadataUri = meta?.metadataUri || null;
+  });
+
+  return {
+    total: sorted.length,
+    hasMore: end < sorted.length,
+    items: pageItems,
+  };
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
 
@@ -1576,6 +1639,38 @@ const server = http.createServer(async (req, res) => {
           summary: {
             totalEstimatedFloorValue: nameStatsResult.totalEstimatedFloorValue,
           },
+        },
+      });
+    } catch (error) {
+      return json(res, 500, {
+        ok: false,
+        error: String(error?.message || error),
+      });
+    }
+  }
+
+  if (url.pathname === '/api/activity/bought' && req.method === 'GET') {
+    try {
+      const ownersRaw = String(url.searchParams.get('owners') || '').trim();
+      const owners = [...new Set(
+        ownersRaw
+          .split(',')
+          .map((x) => x.trim())
+          .filter(Boolean)
+      )].slice(0, 50);
+      const page = Math.max(1, Number(url.searchParams.get('page') || '1'));
+      const limit = Math.max(1, Math.min(200, Number(url.searchParams.get('limit') || '60')));
+
+      const out = await buildBoughtActivities(owners, page, limit);
+      return json(res, 200, {
+        ok: true,
+        owners,
+        page,
+        limit,
+        total: out.total,
+        hasMore: out.hasMore,
+        data: {
+          activities: out.items,
         },
       });
     } catch (error) {

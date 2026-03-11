@@ -15,11 +15,16 @@ const addWalletBtn = document.getElementById('addWalletBtn');
 const walletListInfoEl = document.getElementById('walletListInfo');
 const menuMarketBtn = document.getElementById('menuMarketBtn');
 const menuMyAssetsBtn = document.getElementById('menuMyAssetsBtn');
+const menuBoughtBtn = document.getElementById('menuBoughtBtn');
 const marketSection = document.getElementById('marketSection');
 const myAssetsSection = document.getElementById('myAssetsSection');
+const boughtSection = document.getElementById('boughtSection');
 const myAssetsGridEl = document.getElementById('myAssetsGrid');
 const myAssetsEmptyEl = document.getElementById('myAssetsEmpty');
 const myAssetsInfoEl = document.getElementById('myAssetsInfo');
+const boughtGridEl = document.getElementById('boughtGrid');
+const boughtEmptyEl = document.getElementById('boughtEmpty');
+const boughtInfoEl = document.getElementById('boughtInfo');
 const bulkListSelectedBtn = document.getElementById('bulkListSelectedBtn');
 const bulkDelistSelectedBtn = document.getElementById('bulkDelistSelectedBtn');
 const selectAllOwnedBtn = document.getElementById('selectAllOwnedBtn');
@@ -34,6 +39,7 @@ let totalListings = 0;
 let hasMore = false;
 let rendered = [];
 let lastRenderedMarketKey = '';
+let boughtActivities = [];
 let filterName = '';
 let sortBy = 'newest';
 let filterDebounce = null;
@@ -45,6 +51,7 @@ let portfolioCollectionStats = {};
 let portfolioNameStats = {};
 let portfolioSummary = { totalEstimatedFloorValue: 0 };
 const listPriceDrafts = new Map();
+const selectedAssetKeys = new Set();
 const POLL_MS = 5000;
 
 function draftKey(owner, mint) {
@@ -66,6 +73,26 @@ function getPriceDraft(owner, mint) {
 
 function clearPriceDraft(owner, mint) {
   listPriceDrafts.delete(draftKey(owner, mint));
+}
+
+function assetSelectionKey(action, owner, mint, listing) {
+  return `${action || ''}:${owner || ''}:${mint || ''}:${listing || ''}`;
+}
+
+function markSelection(action, owner, mint, listing, checked) {
+  const key = assetSelectionKey(action, owner, mint, listing);
+  if (!key || key === ':::') {
+    return;
+  }
+  if (checked) {
+    selectedAssetKeys.add(key);
+  } else {
+    selectedAssetKeys.delete(key);
+  }
+}
+
+function isMarkedSelected(action, owner, mint, listing) {
+  return selectedAssetKeys.has(assetSelectionKey(action, owner, mint, listing));
 }
 
 const wallets = [];
@@ -179,10 +206,14 @@ function updateWalletUi() {
 function setView(view) {
   currentView = view;
   const isMarket = view === 'market';
+  const isAssets = view === 'assets';
+  const isBought = view === 'bought';
   marketSection.hidden = !isMarket;
-  myAssetsSection.hidden = isMarket;
+  myAssetsSection.hidden = !isAssets;
+  boughtSection.hidden = !isBought;
   menuMarketBtn.classList.toggle('active', isMarket);
-  menuMyAssetsBtn.classList.toggle('active', !isMarket);
+  menuMyAssetsBtn.classList.toggle('active', isAssets);
+  menuBoughtBtn.classList.toggle('active', isBought);
 }
 
 function toBufferFromBase64(base64) {
@@ -313,6 +344,12 @@ function renderPortfolioAssets(items, collectionStats = {}, nameStats = {}, summ
                 ? `data-listing="${esc(item.listingAddress || '')}"`
                 : `data-mint="${esc(item.mint)}" data-collection="${esc(item.collection || defaultCollection || '')}"`;
               const actionType = item.status === 'listed' ? 'delist' : 'list';
+              const isSelected = isMarkedSelected(
+                actionType,
+                item.owner,
+                item.mint,
+                item.listingAddress || ''
+              );
               const floorPrice = groupFloor == null ? '10' : String(groupFloor);
               const persistedPrice = getPriceDraft(item.owner, item.mint);
               const defaultPrice = persistedPrice && persistedPrice.length ? persistedPrice : floorPrice;
@@ -328,7 +365,7 @@ function renderPortfolioAssets(items, collectionStats = {}, nameStats = {}, summ
                     <div class="row">Mint: ${short(item.mint)}</div>
                     <div class="row">${esc(secondary)}</div>
                     <div class="pick-row">
-                      <input type="checkbox" class="assetSelect" data-action="${actionType}" data-owner="${esc(item.owner)}" data-mint="${esc(item.mint)}" data-listing="${esc(item.listingAddress || '')}" data-collection="${esc(item.collection || defaultCollection || '')}" />
+                      <input type="checkbox" class="assetSelect" data-action="${actionType}" data-owner="${esc(item.owner)}" data-mint="${esc(item.mint)}" data-listing="${esc(item.listingAddress || '')}" data-collection="${esc(item.collection || defaultCollection || '')}" ${isSelected ? 'checked' : ''} />
                       ${item.status === 'listed' ? '<span class="row">Pick to bulk delist</span>' : `<input type="number" class="itemPriceInput" min="0" step="0.000000001" value="${esc(defaultPrice)}" data-owner="${esc(item.owner)}" data-mint="${esc(item.mint)}" /><span class="row">wFOGO</span>`}
                     </div>
                     <div class="actions">
@@ -366,6 +403,42 @@ function renderPortfolioAssets(items, collectionStats = {}, nameStats = {}, summ
   const totalValue = Number(portfolioSummary.totalEstimatedFloorValue || 0);
   myAssetsInfoEl.textContent += ` | Total floor value: ${totalValue.toFixed(3)} wFOGO`;
   myAssetsGridEl.innerHTML = collectionBlocks;
+}
+
+function renderBoughtActivities(items) {
+  boughtActivities = items || [];
+  boughtEmptyEl.hidden = boughtActivities.length > 0;
+  if (!boughtActivities.length) {
+    boughtGridEl.innerHTML = '';
+    boughtInfoEl.textContent = wallets.length ? 'No buy activity yet.' : 'Add wallet first.';
+    return;
+  }
+
+  boughtGridEl.innerHTML = boughtActivities
+    .map((item) => {
+      const when = item.createdAt
+        ? new Date(Number(item.createdAt) * 1000).toLocaleString()
+        : '-';
+      return `
+        <article class="activity-card">
+          <img class="img" src="${esc(item.image || '')}" alt="${esc(item.name || item.assetMint)}" loading="lazy" onerror="this.src='';this.alt='No image'" />
+          <div class="body">
+            <div class="name">${esc(item.name || item.assetMint)}</div>
+            <div class="row">Buyer: ${short(item.buyer)}</div>
+            <div class="row">Seller: ${short(item.seller)}</div>
+            <div class="row">Mint: ${short(item.assetMint)}</div>
+            <div class="row">At: ${esc(when)}</div>
+            <div class="price">${item.priceUi == null ? '-' : `${item.priceUi} wFOGO`}</div>
+            <div class="actions">
+              <a class="rebel-link" target="_blank" rel="noopener noreferrer" href="https://fogoscan.com/tx/${esc(item.signature || '')}">View Tx</a>
+            </div>
+          </div>
+        </article>
+      `;
+    })
+    .join('');
+
+  boughtInfoEl.textContent = `Total bought activity: ${boughtActivities.length}`;
 }
 
 function updateFooter() {
@@ -464,6 +537,25 @@ async function loadPortfolio() {
   statusEl.textContent = 'Live';
 }
 
+async function loadBoughtActivities() {
+  if (!wallets.length) {
+    renderBoughtActivities([]);
+    return;
+  }
+
+  const owners = wallets.map((w) => w.pubkey).join(',');
+  statusEl.textContent = 'Loading bought activity...';
+  const res = await fetch(`/api/activity/bought?owners=${encodeURIComponent(owners)}&page=1&limit=120`, {
+    cache: 'no-store',
+  });
+  const payload = await res.json();
+  if (!payload.ok) {
+    throw new Error(payload.error || 'Failed to load bought activity');
+  }
+  renderBoughtActivities(payload?.data?.activities || []);
+  statusEl.textContent = 'Live';
+}
+
 async function manualRefresh() {
   refreshBtn.disabled = true;
   try {
@@ -472,6 +564,8 @@ async function manualRefresh() {
       getListings(1, 'replace');
       if (currentView === 'assets') {
         loadPortfolio().catch(() => {});
+      } else if (currentView === 'bought') {
+        loadBoughtActivities().catch(() => {});
       }
     }, 500);
   } finally {
@@ -493,6 +587,8 @@ async function onAddWallet() {
     updateWalletUi();
     if (currentView === 'assets') {
       await loadPortfolio();
+    } else if (currentView === 'bought') {
+      await loadBoughtActivities();
     }
   } catch (error) {
     alert(`Invalid private key: ${error.message || error}`);
@@ -645,6 +741,13 @@ function selectByAction(action, checked) {
   for (const box of boxes) {
     if (box.dataset.action === action) {
       box.checked = checked;
+      markSelection(
+        box.dataset.action || '',
+        box.dataset.owner || '',
+        box.dataset.mint || '',
+        box.dataset.listing || '',
+        checked
+      );
     }
   }
 }
@@ -671,6 +774,8 @@ function startPolling() {
     getListings(1, 'replace').catch(() => {});
     if (currentView === 'assets' && wallets.length > 0) {
       loadPortfolio().catch(() => {});
+    } else if (currentView === 'bought' && wallets.length > 0) {
+      loadBoughtActivities().catch(() => {});
     }
   }, POLL_MS);
 }
@@ -681,6 +786,18 @@ addWalletBtn.addEventListener('click', onAddWallet);
 gridEl.addEventListener('click', onMarketGridClick);
 myAssetsGridEl.addEventListener('click', onPortfolioGridClick);
 myAssetsGridEl.addEventListener('input', (event) => {
+  const checkEl = event.target.closest('.assetSelect');
+  if (checkEl) {
+    markSelection(
+      checkEl.dataset.action || '',
+      checkEl.dataset.owner || '',
+      checkEl.dataset.mint || '',
+      checkEl.dataset.listing || '',
+      !!checkEl.checked
+    );
+    return;
+  }
+
   const inputEl = event.target.closest('.itemPriceInput');
   if (!inputEl) {
     return;
@@ -701,6 +818,7 @@ clearSelectionBtn.addEventListener('click', () => {
   boxes.forEach((x) => {
     x.checked = false;
   });
+  selectedAssetKeys.clear();
 });
 menuMarketBtn.addEventListener('click', () => setView('market'));
 menuMyAssetsBtn.addEventListener('click', async () => {
@@ -709,6 +827,14 @@ menuMyAssetsBtn.addEventListener('click', async () => {
     await loadPortfolio();
   } catch (error) {
     alert(`Gagal load My Assets: ${error.message || error}`);
+  }
+});
+menuBoughtBtn.addEventListener('click', async () => {
+  setView('bought');
+  try {
+    await loadBoughtActivities();
+  } catch (error) {
+    alert(`Gagal load Bought Activity: ${error.message || error}`);
   }
 });
 nameFilterEl.addEventListener('input', () => {

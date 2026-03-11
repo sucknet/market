@@ -338,6 +338,29 @@
         font-size: 12px;
       }
 
+      .activity-grid {
+        margin-top: 16px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 12px;
+      }
+
+      .activity-card {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: var(--shadow);
+      }
+
+      .activity-card .img {
+        aspect-ratio: 1 / 1;
+      }
+
+      .activity-card .body {
+        padding: 10px;
+      }
+
       @media (max-width: 780px) {
         .wrap {
           padding: 12px;
@@ -357,7 +380,8 @@
         }
 
         .asset-card-grid,
-        #grid {
+        #grid,
+        .activity-grid {
           grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
         }
 
@@ -407,6 +431,7 @@
       <div class="menu">
         <button id="menuMarketBtn" class="active" type="button">Market</button>
         <button id="menuMyAssetsBtn" type="button">My Assets</button>
+        <button id="menuBoughtBtn" type="button">Bought Activity</button>
       </div>
 
       <section id="marketSection">
@@ -430,6 +455,14 @@
         <div id="myAssetsGrid"></div>
         <div class="foot">
           <span class="hint" id="myAssetsInfo"></span>
+        </div>
+      </section>
+
+      <section id="boughtSection" hidden>
+        <div id="boughtEmpty" class="empty" hidden>No bought activity found.</div>
+        <div id="boughtGrid" class="activity-grid"></div>
+        <div class="foot">
+          <span class="hint" id="boughtInfo"></span>
         </div>
       </section>
     </div>
