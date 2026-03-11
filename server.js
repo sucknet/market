@@ -147,22 +147,6 @@ function getAta(owner, mint) {
   )[0];
 }
 
-function createAtaIdempotentInstruction({ payer, ata, owner, mint }) {
-  return new TransactionInstruction({
-    programId: ASSOCIATED_TOKEN_PROGRAM_ID,
-    keys: [
-      { pubkey: payer, isSigner: true, isWritable: true },
-      { pubkey: ata, isSigner: false, isWritable: true },
-      { pubkey: owner, isSigner: false, isWritable: false },
-      { pubkey: mint, isSigner: false, isWritable: false },
-      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-    ],
-    // Associated token account instruction enum: 1 = CreateIdempotent.
-    data: Buffer.from([1]),
-  });
-}
-
 function getConfigPda() {
   return pda([Buffer.from('config')]);
 }
@@ -465,11 +449,6 @@ async function buildListInstruction(params) {
   const sellerTokenAccountPk = getAta(wallet, currencyMintPk);
   const treasuryTokenAccountPk = getAta(new PublicKey(config.treasury), currencyMintPk);
 
-  const [sellerTokenInfo, treasuryTokenInfo] = await connection.getMultipleAccountsInfo(
-    [sellerTokenAccountPk, treasuryTokenAccountPk],
-    'confirmed'
-  );
-
   const sellerAssetTokenAccountPk = getAta(wallet, assetPk);
   const tokenMetadataAcc = PublicKey.findProgramAddressSync(
     [
@@ -488,28 +467,6 @@ async function buildListInstruction(params) {
     ],
     TOKEN_METADATA_PROGRAM_ID
   )[0];
-
-  const preInstructions = [];
-  if (!sellerTokenInfo) {
-    preInstructions.push(
-      createAtaIdempotentInstruction({
-        payer: wallet,
-        ata: sellerTokenAccountPk,
-        owner: wallet,
-        mint: currencyMintPk,
-      })
-    );
-  }
-  if (!treasuryTokenInfo) {
-    preInstructions.push(
-      createAtaIdempotentInstruction({
-        payer: wallet,
-        ata: treasuryTokenAccountPk,
-        owner: new PublicKey(config.treasury),
-        mint: currencyMintPk,
-      })
-    );
-  }
 
   const accounts = {
     payer: wallet,
@@ -552,10 +509,7 @@ async function buildListInstruction(params) {
     { pubkey: editionAccount, isWritable: false, isSigner: false },
   ];
 
-  return {
-    preInstructions,
-    instruction: buildInstructionByIdl('list', accounts, { priceAtomic }, remaining),
-  };
+  return buildInstructionByIdl('list', accounts, { priceAtomic }, remaining);
 }
 
 async function buildUnsignedTxBase64({ wallet, action, payload }) {
@@ -568,17 +522,13 @@ async function buildUnsignedTxBase64({ wallet, action, payload }) {
   // Never reuse decoded PDA counters between tx builds; these counters mutate every list/buy/unlist.
   state.accountDecodeCache.clear();
 
-  const instructions = [];
+  let instruction;
   if (action === 'buy') {
-    instructions.push(await buildBuyInstruction({ ...payload, wallet }));
+    instruction = await buildBuyInstruction({ ...payload, wallet });
   } else if (action === 'delist') {
-    instructions.push(await buildUnlistInstruction({ ...payload, wallet }));
+    instruction = await buildUnlistInstruction({ ...payload, wallet });
   } else if (action === 'list') {
-    const built = await buildListInstruction({ ...payload, wallet });
-    if (Array.isArray(built.preInstructions) && built.preInstructions.length) {
-      instructions.push(...built.preInstructions);
-    }
-    instructions.push(built.instruction);
+    instruction = await buildListInstruction({ ...payload, wallet });
   } else {
     throw new Error(`Unsupported action: ${action}`);
   }
@@ -589,9 +539,7 @@ async function buildUnsignedTxBase64({ wallet, action, payload }) {
     feePayer: walletPk,
     recentBlockhash: latest.blockhash,
   });
-  for (const ix of instructions) {
-    tx.add(ix);
-  }
+  tx.add(instruction);
 
   return {
     txBase64: tx.serialize({ requireAllSignatures: false, verifySignatures: false }).toString('base64'),
