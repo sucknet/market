@@ -219,7 +219,7 @@ async function decodeProgramAccount(accountName, pubkey) {
   return coder.decode(accountName, info.data);
 }
 
-function buildInstructionByIdl(ixName, accountsByName, args = {}) {
+function buildInstructionByIdl(ixName, accountsByName, args = {}, remainingAccounts = []) {
   const ixDef = (state.idl.instructions || []).find((x) => x.name === ixName);
   if (!ixDef) {
     throw new Error(`Instruction not found in IDL: ${ixName}`);
@@ -236,6 +236,17 @@ function buildInstructionByIdl(ixName, accountsByName, args = {}) {
       isWritable: !!acc.writable,
     };
   });
+
+  for (const extra of remainingAccounts) {
+    if (!extra?.pubkey) {
+      continue;
+    }
+    keys.push({
+      pubkey: extra.pubkey,
+      isSigner: !!extra.isSigner,
+      isWritable: !!extra.isWritable,
+    });
+  }
 
   let argBytes = Buffer.alloc(0);
   if (ixName === 'list') {
@@ -373,7 +384,32 @@ async function buildUnlistInstruction(params) {
     sysvar_instructions: SYSVAR_INSTRUCTIONS_PUBKEY,
   };
 
-  return buildInstructionByIdl('unlist', accounts);
+  const sellerAssetTokenAccount = getAta(sellerPk, assetPk);
+  const tokenMetadataAcc = PublicKey.findProgramAddressSync(
+    [
+      Buffer.from('metadata'),
+      TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+      assetPk.toBuffer(),
+    ],
+    TOKEN_METADATA_PROGRAM_ID
+  )[0];
+  const editionAccount = PublicKey.findProgramAddressSync(
+    [
+      Buffer.from('metadata'),
+      TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+      assetPk.toBuffer(),
+      Buffer.from('edition'),
+    ],
+    TOKEN_METADATA_PROGRAM_ID
+  )[0];
+
+  const remaining = [
+    { pubkey: sellerAssetTokenAccount, isWritable: true, isSigner: false },
+    { pubkey: tokenMetadataAcc, isWritable: true, isSigner: false },
+    { pubkey: editionAccount, isWritable: false, isSigner: false },
+  ];
+
+  return buildInstructionByIdl('unlist', accounts, {}, remaining);
 }
 
 async function buildListInstruction(params) {
