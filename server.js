@@ -253,7 +253,7 @@ function buildInstructionByIdl(ixName, accountsByName, args = {}) {
 async function buildBuyInstruction(params) {
   const wallet = new PublicKey(params.wallet);
   const listingAddress = String(params.listingAddress || '');
-  const listing = state.listingsByAddress.get(listingAddress);
+  const listing = await decodeListingAccount(listingAddress);
   if (!listing || listing.status !== 'Active') {
     throw new Error('Active listing not found for buy');
   }
@@ -315,7 +315,7 @@ async function buildBuyInstruction(params) {
 async function buildUnlistInstruction(params) {
   const wallet = new PublicKey(params.wallet);
   const listingAddress = String(params.listingAddress || '');
-  const listing = state.listingsByAddress.get(listingAddress);
+  const listing = await decodeListingAccount(listingAddress);
   if (!listing || listing.status !== 'Active') {
     throw new Error('Active listing not found for delist');
   }
@@ -1035,6 +1035,36 @@ function parseListingStatusField(status) {
     return 'Sold';
   }
   return 'Unknown';
+}
+
+async function decodeListingAccount(listingAddress) {
+  if (!state.bootstrapped || !state.idl) {
+    state.idl = await getOnchainIdl();
+    state.instructionMap = toInstructionMap(state.idl);
+    state.bootstrapped = true;
+  }
+
+  const listingPk = new PublicKey(listingAddress);
+  const info = await connection.getAccountInfo(listingPk, 'confirmed');
+  if (!info) {
+    return null;
+  }
+
+  try {
+    const coder = new BorshAccountsCoder(state.idl);
+    const row = coder.decode('Listing', info.data);
+    return {
+      listingAddress: listingPk.toBase58(),
+      seller: row?.seller?.toBase58?.() || null,
+      assetMint: row?.asset?.toBase58?.() || null,
+      collection: row?.collection?.toBase58?.() || null,
+      currencyMint: row?.currency_mint?.toBase58?.() || null,
+      status: parseListingStatusField(row?.status),
+      priceUi: Number(asBigInt(row?.price || 0n)) / 1e9,
+    };
+  } catch {
+    return null;
+  }
 }
 
 async function detectActiveListingFromAccount(assetMint, expectedSeller) {
