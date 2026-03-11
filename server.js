@@ -14,7 +14,7 @@ const {
 } = require('@solana/web3.js');
 const { getMetadataAccountDataSerializer } = require('@metaplex-foundation/mpl-token-metadata');
 
-const HOST = process.env.HOST || '127.0.0.1';
+const HOST = process.env.HOST || '0.0.0.0';
 const PORT = Number(process.env.PORT || '8787');
 const REFRESH_MS = Number(process.env.REFRESH_MS || '5000');
 const BACKFILL_BATCH = Number(process.env.BACKFILL_BATCH || '100');
