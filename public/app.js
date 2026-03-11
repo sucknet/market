@@ -43,7 +43,29 @@ let portfolioAssets = [];
 let portfolioCollectionStats = {};
 let portfolioNameStats = {};
 let portfolioSummary = { totalEstimatedFloorValue: 0 };
+const listPriceDrafts = new Map();
 const POLL_MS = 5000;
+
+function draftKey(owner, mint) {
+  return `${owner || ''}:${mint || ''}`;
+}
+
+function setPriceDraft(owner, mint, rawPrice) {
+  const key = draftKey(owner, mint);
+  if (!key || key === ':') {
+    return;
+  }
+  listPriceDrafts.set(key, String(rawPrice || '').trim());
+}
+
+function getPriceDraft(owner, mint) {
+  const key = draftKey(owner, mint);
+  return listPriceDrafts.get(key);
+}
+
+function clearPriceDraft(owner, mint) {
+  listPriceDrafts.delete(draftKey(owner, mint));
+}
 
 const wallets = [];
 
@@ -290,7 +312,9 @@ function renderPortfolioAssets(items, collectionStats = {}, nameStats = {}, summ
                 ? `data-listing="${esc(item.listingAddress || '')}"`
                 : `data-mint="${esc(item.mint)}" data-collection="${esc(item.collection || defaultCollection || '')}"`;
               const actionType = item.status === 'listed' ? 'delist' : 'list';
-              const defaultPrice = groupFloor == null ? '10' : String(groupFloor);
+              const floorPrice = groupFloor == null ? '10' : String(groupFloor);
+              const persistedPrice = getPriceDraft(item.owner, item.mint);
+              const defaultPrice = persistedPrice && persistedPrice.length ? persistedPrice : floorPrice;
               const secondary = item.status === 'listed'
                 ? `Listed at ${item.priceUi || '-'} wFOGO`
                 : (item.inEscrow ? 'In escrow' : 'In wallet');
@@ -304,7 +328,7 @@ function renderPortfolioAssets(items, collectionStats = {}, nameStats = {}, summ
                     <div class="row">${esc(secondary)}</div>
                     <div class="pick-row">
                       <input type="checkbox" class="assetSelect" data-action="${actionType}" data-owner="${esc(item.owner)}" data-mint="${esc(item.mint)}" data-listing="${esc(item.listingAddress || '')}" data-collection="${esc(item.collection || defaultCollection || '')}" />
-                      ${item.status === 'listed' ? '<span class="row">Pick to bulk delist</span>' : `<input type="number" class="itemPriceInput" min="0" step="0.000000001" value="${esc(defaultPrice)}" /><span class="row">wFOGO</span>`}
+                      ${item.status === 'listed' ? '<span class="row">Pick to bulk delist</span>' : `<input type="number" class="itemPriceInput" min="0" step="0.000000001" value="${esc(defaultPrice)}" data-owner="${esc(item.owner)}" data-mint="${esc(item.mint)}" /><span class="row">wFOGO</span>`}
                     </div>
                     <div class="actions">
                       <button type="button" class="${actionClass}" data-owner="${esc(item.owner)}" ${payloadAttr}>${actionLabel}</button>
@@ -518,15 +542,21 @@ async function onPortfolioGridClick(event) {
   }
 
   const card = listBtnEl.closest('.card');
-  const inlinePrice = card?.querySelector('.itemPriceInput')?.value || '0';
+  const priceInput = card?.querySelector('.itemPriceInput');
+  const inlinePrice = priceInput?.value || '0';
   const priceUi = Number(inlinePrice);
   if (!Number.isFinite(priceUi) || priceUi <= 0) {
     alert('Price harus lebih dari 0');
     return;
   }
 
+  if (priceInput) {
+    setPriceDraft(owner, assetMint, inlinePrice);
+  }
+
   try {
     await executeTrade('list', owner, { assetMint, collection, priceUi });
+    clearPriceDraft(owner, assetMint);
     await loadPortfolio();
     await getListings(1, 'replace');
   } catch (error) {
@@ -549,11 +579,17 @@ async function onBulkListSelected() {
       const mint = cb.dataset.mint || '';
       const collection = cb.dataset.collection || defaultCollection;
       const card = cb.closest('.card');
-      const priceUi = Number(card?.querySelector('.itemPriceInput')?.value || '0');
+      const priceInput = card?.querySelector('.itemPriceInput');
+      const inlinePrice = priceInput?.value || '0';
+      const priceUi = Number(inlinePrice);
       if (!owner || !mint || !Number.isFinite(priceUi) || priceUi <= 0) {
         continue;
       }
+      if (priceInput) {
+        setPriceDraft(owner, mint, inlinePrice);
+      }
       await executeTrade('list', owner, { assetMint: mint, collection, priceUi });
+      clearPriceDraft(owner, mint);
     }
     await loadPortfolio();
     await getListings(1, 'replace');
@@ -628,6 +664,18 @@ loadMoreBtn.addEventListener('click', loadMore);
 addWalletBtn.addEventListener('click', onAddWallet);
 gridEl.addEventListener('click', onMarketGridClick);
 myAssetsGridEl.addEventListener('click', onPortfolioGridClick);
+myAssetsGridEl.addEventListener('input', (event) => {
+  const inputEl = event.target.closest('.itemPriceInput');
+  if (!inputEl) {
+    return;
+  }
+  const owner = inputEl.getAttribute('data-owner') || '';
+  const mint = inputEl.getAttribute('data-mint') || '';
+  if (!owner || !mint) {
+    return;
+  }
+  setPriceDraft(owner, mint, inputEl.value || '');
+});
 bulkListSelectedBtn.addEventListener('click', onBulkListSelected);
 bulkDelistSelectedBtn.addEventListener('click', onBulkDelistSelected);
 selectAllOwnedBtn.addEventListener('click', () => selectByAction('list', true));
