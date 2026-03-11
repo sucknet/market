@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fogo Fish Live Market</title>
+    <style>
+      :root {
+        --bg: #f2efe8;
+        --ink: #102323;
+        --card: #fffefb;
+        --line: #d8d2c8;
+        --accent: #176b87;
+        --accent2: #f0a04b;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 10% 20%, #fff5df 0%, transparent 35%),
+          radial-gradient(circle at 90% 10%, #d7ecef 0%, transparent 35%),
+          var(--bg);
+      }
+
+      .wrap {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      .head {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      h1 {
+        margin: 0;
+        letter-spacing: 0.4px;
+      }
+
+      .meta {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .tools {
+        margin-top: 12px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .menu {
+        margin-top: 12px;
+        display: flex;
+        gap: 8px;
+      }
+
+      .menu button.active {
+        background: var(--accent);
+        color: #fff;
+      }
+
+      .trade {
+        margin-top: 10px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .tools input,
+      .tools select,
+      .trade input {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 8px 10px;
+        font-size: 13px;
+        color: var(--ink);
+      }
+
+      .tools input {
+        min-width: 260px;
+      }
+
+      .trade input {
+        min-width: 180px;
+      }
+
+      .pill {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 6px 10px;
+        font-size: 12px;
+      }
+
+      button {
+        border: 1px solid var(--ink);
+        border-radius: 10px;
+        background: var(--accent2);
+        color: #111;
+        font-weight: 700;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+
+      #grid {
+        margin-top: 16px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 12px;
+      }
+
+      #myAssetsGrid {
+        margin-top: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      #myAssetsSection[hidden] {
+        display: none;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        overflow: hidden;
+      }
+
+      .img {
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        object-fit: cover;
+        background: #eee;
+      }
+
+      .body {
+        padding: 10px;
+      }
+
+      .name {
+        font-size: 14px;
+        font-weight: 700;
+        margin-bottom: 6px;
+      }
+
+      .row {
+        font-size: 12px;
+        color: #2b4d4d;
+      }
+
+      .price {
+        color: var(--accent);
+        font-weight: 800;
+        margin-top: 4px;
+      }
+
+      .actions {
+        margin-top: 8px;
+        display: flex;
+        gap: 6px;
+      }
+
+      .actions button {
+        font-size: 12px;
+        padding: 6px 8px;
+      }
+
+      .actions .rebel-link {
+        display: inline-block;
+        font-size: 12px;
+        padding: 6px 8px;
+        border: 1px solid var(--ink);
+        border-radius: 10px;
+        text-decoration: none;
+        color: #111;
+        background: #f3d7a8;
+      }
+
+      .empty {
+        margin-top: 16px;
+        background: var(--card);
+        border: 1px dashed var(--line);
+        border-radius: 12px;
+        padding: 20px;
+      }
+
+      .foot {
+        margin-top: 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .hint {
+        font-size: 12px;
+        color: #345;
+      }
+
+      .asset-collection-block {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px;
+      }
+
+      .asset-collection-head {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+
+      .asset-collection-head .bulk {
+        margin-left: auto;
+        display: flex;
+        gap: 6px;
+      }
+
+      .asset-collection-head .bulk button {
+        font-size: 11px;
+        padding: 5px 8px;
+      }
+
+      .asset-name-group {
+        margin-top: 8px;
+      }
+
+      .asset-name-title {
+        font-size: 13px;
+        font-weight: 700;
+        margin-bottom: 6px;
+      }
+
+      .asset-card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="head">
+        <h1>Fogo Fish Live Listings</h1>
+        <div class="meta">
+          <span class="pill" id="status">Loading...</span>
+          <span class="pill" id="count">0</span>
+          <span class="pill" id="updated">-</span>
+          <span class="pill" id="walletStatus">Wallets: 0 loaded</span>
+          <select id="activeWalletSelect"></select>
+          <button id="refreshBtn" type="button">Refresh Now</button>
+        </div>
+      </div>
+
+      <div class="tools">
+        <input id="privateKeyInput" type="text" />
+        <button id="addWalletBtn" type="button">Add Wallet</button>
+      </div>
+      <div class="foot">
+        <span class="hint" id="walletListInfo">No wallet added</span>
+      </div>
+
+      <div class="tools">
+        <input id="nameFilter" type="text" placeholder="Filter by name (e.g. Fish #6)" />
+        <select id="sortSelect">
+          <option value="newest">Sort: Newest</option>
+          <option value="price_asc">Sort: Price Low to High</option>
+          <option value="price_desc">Sort: Price High to Low</option>
+        </select>
+      </div>
+
+      <div class="menu">
+        <button id="menuMarketBtn" class="active" type="button">Market</button>
+        <button id="menuMyAssetsBtn" type="button">My Assets</button>
+      </div>
+
+      <section id="marketSection">
+        <div id="empty" class="empty" hidden>No active listings yet.</div>
+        <div id="grid"></div>
+        <div class="foot">
+          <button id="loadMoreBtn" type="button" hidden>Load More</button>
+          <span class="hint" id="pageInfo"></span>
+        </div>
+      </section>
+
+      <section id="myAssetsSection" hidden>
+        <div id="myAssetsEmpty" class="empty" hidden>No NFT assets found in connected wallet.</div>
+        <div id="myAssetsGrid"></div>
+        <div class="foot">
+          <span class="hint" id="myAssetsInfo"></span>
+        </div>
+      </section>
+    </div>
+    <script src="https://unpkg.com/@solana/web3.js@1.98.2/lib/index.iife.min.js"></script>
+    <script src="/app.js"></script>
+  </body>
+</html>

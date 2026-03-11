@@ -1,0 +1,1672 @@
+{
+  "list": {
+    "name": "list",
+    "docs": [
+      "List an asset for sale."
+    ],
+    "discriminator": [
+      54,
+      174,
+      193,
+      67,
+      17,
+      41,
+      132,
+      38
+    ],
+    "accounts": [
+      {
+        "name": "payer",
+        "docs": [
+          "The payer paying for transaction fees."
+        ],
+        "writable": true,
+        "signer": true
+      },
+      {
+        "name": "fogo_session",
+        "docs": [
+          "Fogo Session to allow payer to pay the fees."
+        ],
+        "writable": true,
+        "signer": true
+      },
+      {
+        "name": "asset",
+        "docs": [
+          "The MPL Core asset account to be listed."
+        ],
+        "writable": true
+      },
+      {
+        "name": "collection",
+        "docs": [
+          "The collection account of the asset."
+        ],
+        "writable": true
+      },
+      {
+        "name": "allowed_collection",
+        "docs": [
+          "The CollectionDetails account."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                99,
+                111,
+                108,
+                108,
+                101,
+                99,
+                116,
+                105,
+                111,
+                110
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "collection"
+            }
+          ]
+        }
+      },
+      {
+        "name": "config",
+        "docs": [
+          "The global configuration account."
+        ]
+      },
+      {
+        "name": "allowed_currency",
+        "docs": [
+          "The allowed currency account for the listing currency."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                97,
+                108,
+                108,
+                111,
+                119,
+                101,
+                100,
+                95,
+                99,
+                117,
+                114,
+                114,
+                101,
+                110,
+                99,
+                121
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "currency_mint"
+            }
+          ]
+        }
+      },
+      {
+        "name": "currency_mint",
+        "docs": [
+          "The mint address of the listing currency."
+        ],
+        "writable": true
+      },
+      {
+        "name": "seller",
+        "docs": [
+          "The seller and owner of the asset (separate from payer who pays tx fees)."
+        ],
+        "signer": true
+      },
+      {
+        "name": "seller_token_account",
+        "docs": [
+          "The seller's associated token account for paying the listing fee."
+        ],
+        "writable": true
+      },
+      {
+        "name": "treasury_token_account",
+        "docs": [
+          "The treasury's associated token account where the listing fee is sent."
+        ],
+        "writable": true
+      },
+      {
+        "name": "listing_version_counter",
+        "docs": [
+          "Counter used to derive unique listing seeds for the same asset."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                108,
+                105,
+                115,
+                116,
+                105,
+                110,
+                103
+              ]
+            },
+            {
+              "kind": "const",
+              "value": [
+                118,
+                101,
+                114,
+                115,
+                105,
+                111,
+                110,
+                95,
+                99,
+                111,
+                117,
+                110,
+                116,
+                101,
+                114
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "asset"
+            }
+          ]
+        }
+      },
+      {
+        "name": "listing",
+        "docs": [
+          "The new Listing PDA."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                108,
+                105,
+                115,
+                116,
+                105,
+                110,
+                103
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "asset"
+            },
+            {
+              "kind": "account",
+              "path": "listing_version_counter.version_count",
+              "account": "AssetListingVersionCounter"
+            }
+          ]
+        }
+      },
+      {
+        "name": "global_stats",
+        "docs": [
+          "The global statistics account."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                103,
+                108,
+                111,
+                98,
+                97,
+                108,
+                95,
+                115,
+                116,
+                97,
+                116,
+                115
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "global_listing_pointer",
+        "docs": [
+          "The new global listing pointer account."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                108,
+                105,
+                115,
+                116,
+                105,
+                110,
+                103
+              ]
+            },
+            {
+              "kind": "const",
+              "value": [
+                103,
+                108,
+                111,
+                98,
+                97,
+                108
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "global_stats.total_listings",
+              "account": "GlobalStats"
+            }
+          ]
+        }
+      },
+      {
+        "name": "user_stats",
+        "docs": [
+          "The user statistics account for the seller."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                117,
+                115,
+                101,
+                114,
+                95,
+                115,
+                116,
+                97,
+                116,
+                115
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "seller"
+            }
+          ]
+        }
+      },
+      {
+        "name": "user_listing_pointer",
+        "docs": [
+          "The new user listing pointer account."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                108,
+                105,
+                115,
+                116,
+                105,
+                110,
+                103
+              ]
+            },
+            {
+              "kind": "const",
+              "value": [
+                117,
+                115,
+                101,
+                114
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "seller"
+            },
+            {
+              "kind": "account",
+              "path": "user_stats.total_listings",
+              "account": "UserStats"
+            }
+          ]
+        }
+      },
+      {
+        "name": "collection_listing_pointer",
+        "docs": [
+          "The new collection listing pointer account."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                108,
+                105,
+                115,
+                116,
+                105,
+                110,
+                103
+              ]
+            },
+            {
+              "kind": "const",
+              "value": [
+                99,
+                111,
+                108,
+                108,
+                101,
+                99,
+                116,
+                105,
+                111,
+                110
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "collection"
+            },
+            {
+              "kind": "account",
+              "path": "allowed_collection.total_listings",
+              "account": "AllowedCollection"
+            }
+          ]
+        }
+      },
+      {
+        "name": "global_activity",
+        "docs": [
+          "The new global activity event account."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                97,
+                99,
+                116,
+                105,
+                118,
+                105,
+                116,
+                121
+              ]
+            },
+            {
+              "kind": "const",
+              "value": [
+                103,
+                108,
+                111,
+                98,
+                97,
+                108
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "global_stats.total_activities",
+              "account": "GlobalStats"
+            }
+          ]
+        }
+      },
+      {
+        "name": "user_activity",
+        "docs": [
+          "The new user activity pointer account."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                97,
+                99,
+                116,
+                105,
+                118,
+                105,
+                116,
+                121
+              ]
+            },
+            {
+              "kind": "const",
+              "value": [
+                117,
+                115,
+                101,
+                114
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "seller"
+            },
+            {
+              "kind": "account",
+              "path": "user_stats.total_activities",
+              "account": "UserStats"
+            }
+          ]
+        }
+      },
+      {
+        "name": "collection_activity_pointer",
+        "docs": [
+          "The collection activity pointer."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                97,
+                99,
+                116,
+                105,
+                118,
+                105,
+                116,
+                121
+              ]
+            },
+            {
+              "kind": "const",
+              "value": [
+                99,
+                111,
+                108,
+                108,
+                101,
+                99,
+                116,
+                105,
+                111,
+                110
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "collection"
+            },
+            {
+              "kind": "account",
+              "path": "allowed_collection.total_activities",
+              "account": "AllowedCollection"
+            }
+          ]
+        }
+      },
+      {
+        "name": "system_program",
+        "docs": [
+          "The system program. Required for `init` / `init_if_needed` constraints."
+        ],
+        "address": "11111111111111111111111111111111"
+      }
+    ],
+    "args": [
+      {
+        "name": "price",
+        "type": "u64"
+      }
+    ]
+  },
+  "unlist": {
+    "name": "unlist",
+    "docs": [
+      "Unlist an asset from the marketplace."
+    ],
+    "discriminator": [
+      185,
+      125,
+      20,
+      193,
+      209,
+      44,
+      13,
+      224
+    ],
+    "accounts": [
+      {
+        "name": "payer",
+        "docs": [
+          "The payer paying for transaction fees."
+        ],
+        "writable": true,
+        "signer": true
+      },
+      {
+        "name": "fogo_session",
+        "docs": [
+          "Fogo Session to allow payer to pay the fees."
+        ],
+        "writable": true,
+        "signer": true
+      },
+      {
+        "name": "asset",
+        "docs": [
+          "The MPL Core asset account to be unlisted."
+        ],
+        "writable": true,
+        "relations": [
+          "listing"
+        ]
+      },
+      {
+        "name": "collection",
+        "docs": [
+          "The collection account of the asset."
+        ],
+        "writable": true
+      },
+      {
+        "name": "allowed_collection",
+        "docs": [
+          "The CollectionDetails account."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                99,
+                111,
+                108,
+                108,
+                101,
+                99,
+                116,
+                105,
+                111,
+                110
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "collection"
+            }
+          ]
+        }
+      },
+      {
+        "name": "config",
+        "docs": [
+          "The global configuration account."
+        ],
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                99,
+                111,
+                110,
+                102,
+                105,
+                103
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "allowed_currency",
+        "docs": [
+          "The allowed currency account."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                97,
+                108,
+                108,
+                111,
+                119,
+                101,
+                100,
+                95,
+                99,
+                117,
+                114,
+                114,
+                101,
+                110,
+                99,
+                121
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "listing.currency_mint",
+              "account": "Listing"
+            }
+          ]
+        }
+      },
+      {
+        "name": "currency_mint",
+        "docs": [
+          "The mint address of the listing currency."
+        ],
+        "writable": true,
+        "relations": [
+          "listing"
+        ]
+      },
+      {
+        "name": "seller",
+        "docs": [
+          "The seller and owner of the asset (separate from payer who pays tx fees)."
+        ],
+        "signer": true,
+        "relations": [
+          "listing"
+        ]
+      },
+      {
+        "name": "seller_token_account",
+        "docs": [
+          "The seller's associated token account (funding source)."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "account",
+              "path": "seller"
+            },
+            {
+              "kind": "const",
+              "value": [
+                6,
+                221,
+                246,
+                225,
+                215,
+                101,
+                161,
+                147,
+                217,
+                203,
+                225,
+                70,
+                206,
+                235,
+                121,
+                172,
+                28,
+                180,
+                133,
+                237,
+                95,
+                91,
+                55,
+                145,
+                58,
+                140,
+                245,
+                133,
+                126,
+                255,
+                0,
+                169
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "currency_mint"
+            }
+          ],
+          "program": {
+            "kind": "const",
+            "value": [
+              140,
+              151,
+              37,
+              143,
+              78,
+              36,
+              137,
+              241,
+              187,
+              61,
+              16,
+              41,
+              20,
+              142,
+              13,
+              131,
+              11,
+              90,
+              19,
+              153,
+              218,
+              255,
+              16,
+              132,
+              4,
+              142,
+              123,
+              216,
+              219,
+              233,
+              248,
+              89
+            ]
+          }
+        }
+      },
+      {
+        "name": "treasury_token_account",
+        "docs": [
+          "The treasury's associated token account."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "account",
+              "path": "config.treasury",
+              "account": "Config"
+            },
+            {
+              "kind": "const",
+              "value": [
+                6,
+                221,
+                246,
+                225,
+                215,
+                101,
+                161,
+                147,
+                217,
+                203,
+                225,
+                70,
+                206,
+                235,
+                121,
+                172,
+                28,
+                180,
+                133,
+                237,
+                95,
+                91,
+                55,
+                145,
+                58,
+                140,
+                245,
+                133,
+                126,
+                255,
+                0,
+                169
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "currency_mint"
+            }
+          ],
+          "program": {
+            "kind": "const",
+            "value": [
+              140,
+              151,
+              37,
+              143,
+              78,
+              36,
+              137,
+              241,
+              187,
+              61,
+              16,
+              41,
+              20,
+              142,
+              13,
+              131,
+              11,
+              90,
+              19,
+              153,
+              218,
+              255,
+              16,
+              132,
+              4,
+              142,
+              123,
+              216,
+              219,
+              233,
+              248,
+              89
+            ]
+          }
+        }
+      },
+      {
+        "name": "listing_version_counter",
+        "docs": [
+          "The asset listing version counter account."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                108,
+                105,
+                115,
+                116,
+                105,
+                110,
+                103
+              ]
+            },
+            {
+              "kind": "const",
+              "value": [
+                118,
+                101,
+                114,
+                115,
+                105,
+                111,
+                110,
+                95,
+                99,
+                111,
+                117,
+                110,
+                116,
+                101,
+                114
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "asset"
+            }
+          ]
+        }
+      },
+      {
+        "name": "listing",
+        "docs": [
+          "The Listing PDA to be closed (unlisted)."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                108,
+                105,
+                115,
+                116,
+                105,
+                110,
+                103
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "asset"
+            },
+            {
+              "kind": "account",
+              "path": "listing_version_counter.version_count",
+              "account": "AssetListingVersionCounter"
+            }
+          ]
+        }
+      },
+      {
+        "name": "global_stats",
+        "docs": [
+          "The global statistics account."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                103,
+                108,
+                111,
+                98,
+                97,
+                108,
+                95,
+                115,
+                116,
+                97,
+                116,
+                115
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "user_stats",
+        "docs": [
+          "The user statistics account for the seller."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                117,
+                115,
+                101,
+                114,
+                95,
+                115,
+                116,
+                97,
+                116,
+                115
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "seller"
+            }
+          ]
+        }
+      },
+      {
+        "name": "global_activity",
+        "docs": [
+          "The new global activity event account."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                97,
+                99,
+                116,
+                105,
+                118,
+                105,
+                116,
+                121
+              ]
+            },
+            {
+              "kind": "const",
+              "value": [
+                103,
+                108,
+                111,
+                98,
+                97,
+                108
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "global_stats.total_activities",
+              "account": "GlobalStats"
+            }
+          ]
+        }
+      },
+      {
+        "name": "user_activity",
+        "docs": [
+          "The new user activity pointer account."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                97,
+                99,
+                116,
+                105,
+                118,
+                105,
+                116,
+                121
+              ]
+            },
+            {
+              "kind": "const",
+              "value": [
+                117,
+                115,
+                101,
+                114
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "seller"
+            },
+            {
+              "kind": "account",
+              "path": "user_stats.total_activities",
+              "account": "UserStats"
+            }
+          ]
+        }
+      },
+      {
+        "name": "collection_activity_pointer",
+        "docs": [
+          "The collection activity pointer."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                97,
+                99,
+                116,
+                105,
+                118,
+                105,
+                116,
+                121
+              ]
+            },
+            {
+              "kind": "const",
+              "value": [
+                99,
+                111,
+                108,
+                108,
+                101,
+                99,
+                116,
+                105,
+                111,
+                110
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "collection"
+            },
+            {
+              "kind": "account",
+              "path": "allowed_collection.total_activities",
+              "account": "AllowedCollection"
+            }
+          ]
+        }
+      },
+      {
+        "name": "mpl_core_program",
+        "docs": [
+          "The MPL Core Program."
+        ],
+        "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
+      },
+      {
+        "name": "system_program",
+        "docs": [
+          "The system program."
+        ],
+        "address": "11111111111111111111111111111111"
+      },
+      {
+        "name": "token_program",
+        "docs": [
+          "The SPL Token program."
+        ],
+        "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+      },
+      {
+        "name": "associated_token_program",
+        "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+      },
+      {
+        "name": "token_metadata_program",
+        "docs": [
+          "The MPL Token Metadata Program."
+        ],
+        "address": "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+      },
+      {
+        "name": "sysvar_instructions",
+        "docs": [
+          "Sysvar Instructions."
+        ],
+        "address": "Sysvar1nstructions1111111111111111111111111"
+      }
+    ],
+    "args": []
+  },
+  "buy": {
+    "name": "buy",
+    "docs": [
+      "Buy a listed asset."
+    ],
+    "discriminator": [
+      102,
+      6,
+      61,
+      18,
+      1,
+      218,
+      235,
+      234
+    ],
+    "accounts": [
+      {
+        "name": "payer",
+        "docs": [
+          "The payer paying for transaction fees."
+        ],
+        "writable": true,
+        "signer": true
+      },
+      {
+        "name": "seller",
+        "docs": [
+          "The seller's wallet, receiving the sale proceeds."
+        ],
+        "writable": true
+      },
+      {
+        "name": "asset",
+        "docs": [
+          "The asset being purchased."
+        ],
+        "writable": true
+      },
+      {
+        "name": "collection",
+        "docs": [
+          "The collection account of the asset."
+        ],
+        "writable": true
+      },
+      {
+        "name": "allowed_collection",
+        "docs": [
+          "The CollectionDetails account."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                99,
+                111,
+                108,
+                108,
+                101,
+                99,
+                116,
+                105,
+                111,
+                110
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "collection"
+            }
+          ]
+        }
+      },
+      {
+        "name": "config",
+        "docs": [
+          "The global configuration account."
+        ]
+      },
+      {
+        "name": "currency_mint",
+        "docs": [
+          "The mint address of the currency."
+        ],
+        "writable": true
+      },
+      {
+        "name": "allowed_currency",
+        "docs": [
+          "The allowed currency account for the listing currency."
+        ],
+        "writable": true
+      },
+      {
+        "name": "fogo_session",
+        "docs": [
+          "The fogo session of the buyer making the purchase."
+        ],
+        "writable": true,
+        "signer": true
+      },
+      {
+        "name": "buyer",
+        "docs": [
+          "The buyer and new owner of the asset"
+        ],
+        "writable": true
+      },
+      {
+        "name": "buyer_token_account",
+        "docs": [
+          "The buyer's associated token account (funding source)."
+        ],
+        "writable": true
+      },
+      {
+        "name": "seller_token_account",
+        "docs": [
+          "The seller's associated token account (funds destination)."
+        ],
+        "writable": true
+      },
+      {
+        "name": "treasury_token_account",
+        "docs": [
+          "The treasury's associated token account (fee destination)."
+        ],
+        "writable": true
+      },
+      {
+        "name": "listing_version_counter",
+        "docs": [
+          "The asset listing version counter account."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                108,
+                105,
+                115,
+                116,
+                105,
+                110,
+                103
+              ]
+            },
+            {
+              "kind": "const",
+              "value": [
+                118,
+                101,
+                114,
+                115,
+                105,
+                111,
+                110,
+                95,
+                99,
+                111,
+                117,
+                110,
+                116,
+                101,
+                114
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "asset"
+            }
+          ]
+        }
+      },
+      {
+        "name": "listing",
+        "docs": [
+          "The listing PDA, authority for the transfer."
+        ],
+        "writable": true
+      },
+      {
+        "name": "global_stats",
+        "docs": [
+          "The global statistics account."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                103,
+                108,
+                111,
+                98,
+                97,
+                108,
+                95,
+                115,
+                116,
+                97,
+                116,
+                115
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "buyer_stats",
+        "docs": [
+          "The user statistics account for the buyer."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                117,
+                115,
+                101,
+                114,
+                95,
+                115,
+                116,
+                97,
+                116,
+                115
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "buyer"
+            }
+          ]
+        }
+      },
+      {
+        "name": "seller_stats",
+        "docs": [
+          "The user statistics account for the seller (to update sales count)."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                117,
+                115,
+                101,
+                114,
+                95,
+                115,
+                116,
+                97,
+                116,
+                115
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "seller"
+            }
+          ]
+        }
+      },
+      {
+        "name": "global_activity_buy",
+        "docs": [
+          "The new global activity event account for Buyer (Buy)."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                97,
+                99,
+                116,
+                105,
+                118,
+                105,
+                116,
+                121
+              ]
+            },
+            {
+              "kind": "const",
+              "value": [
+                103,
+                108,
+                111,
+                98,
+                97,
+                108
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "global_stats.total_activities",
+              "account": "GlobalStats"
+            }
+          ]
+        }
+      },
+      {
+        "name": "buyer_activity",
+        "docs": [
+          "The new user activity pointer account for the buyer."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                97,
+                99,
+                116,
+                105,
+                118,
+                105,
+                116,
+                121
+              ]
+            },
+            {
+              "kind": "const",
+              "value": [
+                117,
+                115,
+                101,
+                114
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "buyer"
+            },
+            {
+              "kind": "account",
+              "path": "buyer_stats.total_activities",
+              "account": "UserStats"
+            }
+          ]
+        }
+      },
+      {
+        "name": "collection_activity",
+        "docs": [
+          "The new collection activity pointer for the buyer (Buy)."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                97,
+                99,
+                116,
+                105,
+                118,
+                105,
+                116,
+                121
+              ]
+            },
+            {
+              "kind": "const",
+              "value": [
+                99,
+                111,
+                108,
+                108,
+                101,
+                99,
+                116,
+                105,
+                111,
+                110
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "collection"
+            },
+            {
+              "kind": "account",
+              "path": "allowed_collection.total_activities",
+              "account": "AllowedCollection"
+            }
+          ]
+        }
+      },
+      {
+        "name": "global_activity_sell",
+        "docs": [
+          "The new global activity event account for the seller (Sell)."
+        ],
+        "writable": true
+      },
+      {
+        "name": "seller_activity",
+        "docs": [
+          "The new user activity pointer account for the seller (Sell)."
+        ],
+        "writable": true,
+        "pda": {
+          "seeds": [
+            {
+              "kind": "const",
+              "value": [
+                97,
+                99,
+                116,
+                105,
+                118,
+                105,
+                116,
+                121
+              ]
+            },
+            {
+              "kind": "const",
+              "value": [
+                117,
+                115,
+                101,
+                114
+              ]
+            },
+            {
+              "kind": "account",
+              "path": "seller"
+            },
+            {
+              "kind": "account",
+              "path": "seller_stats.total_activities",
+              "account": "UserStats"
+            }
+          ]
+        }
+      },
+      {
+        "name": "system_program",
+        "docs": [
+          "The system program. Required for `init` / `init_if_needed` constraints."
+        ],
+        "address": "11111111111111111111111111111111"
+      }
+    ],
+    "args": []
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "nft",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "market:active": "node scripts/fetch-active-listings.js",
+    "market:web": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.32.1",
+    "@metaplex-foundation/mpl-core": "^1.7.0",
+    "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
+    "@solana/web3.js": "^1.98.4",
+    "pako": "^2.1.0"
+  }
+}
