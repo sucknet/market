@@ -147,6 +147,22 @@ function getAta(owner, mint) {
   )[0];
 }
 
+function createAtaIdempotentInstruction({ payer, ata, owner, mint }) {
+  return new TransactionInstruction({
+    programId: ASSOCIATED_TOKEN_PROGRAM_ID,
+    keys: [
+      { pubkey: payer, isSigner: true, isWritable: true },
+      { pubkey: ata, isSigner: false, isWritable: true },
+      { pubkey: owner, isSigner: false, isWritable: false },
+      { pubkey: mint, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    ],
+    // Associated token account instruction enum: 1 = CreateIdempotent.
+    data: Buffer.from([1]),
+  });
+}
+
 function getConfigPda() {
   return pda([Buffer.from('config')]);
 }
@@ -446,6 +462,55 @@ async function buildListInstruction(params) {
   const userStatsPk = getUserStatsPda(wallet);
   const userStats = await decodeProgramAccount('UserStats', userStatsPk);
 
+  const sellerTokenAccountPk = getAta(wallet, currencyMintPk);
+  const treasuryTokenAccountPk = getAta(new PublicKey(config.treasury), currencyMintPk);
+
+  const [sellerTokenInfo, treasuryTokenInfo] = await connection.getMultipleAccountsInfo(
+    [sellerTokenAccountPk, treasuryTokenAccountPk],
+    'confirmed'
+  );
+
+  const sellerAssetTokenAccountPk = getAta(wallet, assetPk);
+  const tokenMetadataAcc = PublicKey.findProgramAddressSync(
+    [
+      Buffer.from('metadata'),
+      TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+      assetPk.toBuffer(),
+    ],
+    TOKEN_METADATA_PROGRAM_ID
+  )[0];
+  const editionAccount = PublicKey.findProgramAddressSync(
+    [
+      Buffer.from('metadata'),
+      TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+      assetPk.toBuffer(),
+      Buffer.from('edition'),
+    ],
+    TOKEN_METADATA_PROGRAM_ID
+  )[0];
+
+  const preInstructions = [];
+  if (!sellerTokenInfo) {
+    preInstructions.push(
+      createAtaIdempotentInstruction({
+        payer: wallet,
+        ata: sellerTokenAccountPk,
+        owner: wallet,
+        mint: currencyMintPk,
+      })
+    );
+  }
+  if (!treasuryTokenInfo) {
+    preInstructions.push(
+      createAtaIdempotentInstruction({
+        payer: wallet,
+        ata: treasuryTokenAccountPk,
+        owner: new PublicKey(config.treasury),
+        mint: currencyMintPk,
+      })
+    );
+  }
+
   const accounts = {
     payer: wallet,
     fogo_session: wallet,
@@ -456,8 +521,8 @@ async function buildListInstruction(params) {
     allowed_currency: getAllowedCurrencyPda(currencyMintPk),
     currency_mint: currencyMintPk,
     seller: wallet,
-    seller_token_account: getAta(wallet, currencyMintPk),
-    treasury_token_account: getAta(new PublicKey(config.treasury), currencyMintPk),
+    seller_token_account: sellerTokenAccountPk,
+    treasury_token_account: treasuryTokenAccountPk,
     listing_version_counter: listingVersionCounterPk,
     listing: listingPk,
     global_stats: globalStatsPk,
@@ -477,7 +542,20 @@ async function buildListInstruction(params) {
     system_program: SystemProgram.programId,
   };
 
-  return buildInstructionByIdl('list', accounts, { priceAtomic });
+  const remaining = [
+    { pubkey: SYSVAR_INSTRUCTIONS_PUBKEY, isWritable: false, isSigner: false },
+    { pubkey: TOKEN_PROGRAM_ID, isWritable: false, isSigner: false },
+    { pubkey: MPL_CORE_PROGRAM_ID, isWritable: false, isSigner: false },
+    { pubkey: TOKEN_METADATA_PROGRAM_ID, isWritable: false, isSigner: false },
+    { pubkey: sellerAssetTokenAccountPk, isWritable: true, isSigner: false },
+    { pubkey: tokenMetadataAcc, isWritable: true, isSigner: false },
+    { pubkey: editionAccount, isWritable: false, isSigner: false },
+  ];
+
+  return {
+    preInstructions,
+    instruction: buildInstructionByIdl('list', accounts, { priceAtomic }, remaining),
+  };
 }
 
 async function buildUnsignedTxBase64({ wallet, action, payload }) {
@@ -490,13 +568,17 @@ async function buildUnsignedTxBase64({ wallet, action, payload }) {
   // Never reuse decoded PDA counters between tx builds; these counters mutate every list/buy/unlist.
   state.accountDecodeCache.clear();
 
-  let instruction;
+  const instructions = [];
   if (action === 'buy') {
-    instruction = await buildBuyInstruction({ ...payload, wallet });
+    instructions.push(await buildBuyInstruction({ ...payload, wallet }));
   } else if (action === 'delist') {
-    instruction = await buildUnlistInstruction({ ...payload, wallet });
+    instructions.push(await buildUnlistInstruction({ ...payload, wallet }));
   } else if (action === 'list') {
-    instruction = await buildListInstruction({ ...payload, wallet });
+    const built = await buildListInstruction({ ...payload, wallet });
+    if (Array.isArray(built.preInstructions) && built.preInstructions.length) {
+      instructions.push(...built.preInstructions);
+    }
+    instructions.push(built.instruction);
   } else {
     throw new Error(`Unsupported action: ${action}`);
   }
@@ -507,7 +589,9 @@ async function buildUnsignedTxBase64({ wallet, action, payload }) {
     feePayer: walletPk,
     recentBlockhash: latest.blockhash,
   });
-  tx.add(instruction);
+  for (const ix of instructions) {
+    tx.add(ix);
+  }
 
   return {
     txBase64: tx.serialize({ requireAllSignatures: false, verifySignatures: false }).toString('base64'),
