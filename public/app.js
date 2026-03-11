@@ -33,6 +33,7 @@ let pageSize = 60;
 let totalListings = 0;
 let hasMore = false;
 let rendered = [];
+let lastRenderedMarketKey = '';
 let filterName = '';
 let sortBy = 'newest';
 let filterDebounce = null;
@@ -373,6 +374,12 @@ function updateFooter() {
   loadMoreBtn.hidden = !hasMore;
 }
 
+function toMarketRenderKey(listings) {
+  return (listings || [])
+    .map((item) => `${item.listingAddress || ''}:${item.priceUi || ''}:${item.assetMint || ''}`)
+    .join('|');
+}
+
 async function getListings(page = 1, mode = 'replace') {
   if (mode === 'replace') {
     statusEl.textContent = 'Syncing...';
@@ -414,12 +421,21 @@ async function getListings(page = 1, mode = 'replace') {
   updatedEl.textContent = `Updated: ${new Date(data.generatedAt).toLocaleTimeString()}`;
 
   const pageListings = data.listings || [];
+  const nextRenderKey = toMarketRenderKey(pageListings);
   if (mode === 'replace') {
+    const shouldRerender =
+      nextRenderKey !== lastRenderedMarketKey ||
+      rendered.length !== pageListings.length ||
+      currentPage !== 1;
     rendered = [...pageListings];
-    renderMarketCards(pageListings, 'replace');
+    if (shouldRerender) {
+      renderMarketCards(pageListings, 'replace');
+      lastRenderedMarketKey = nextRenderKey;
+    }
   } else {
     rendered = [...rendered, ...pageListings];
     renderMarketCards(pageListings, 'append');
+    lastRenderedMarketKey = toMarketRenderKey(rendered);
   }
 
   updateFooter();
