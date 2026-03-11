@@ -410,7 +410,7 @@ function renderBoughtActivities(items) {
   boughtEmptyEl.hidden = boughtActivities.length > 0;
   if (!boughtActivities.length) {
     boughtGridEl.innerHTML = '';
-    boughtInfoEl.textContent = wallets.length ? 'No buy activity yet.' : 'Add wallet first.';
+    boughtInfoEl.textContent = 'No market buy activity yet.';
     return;
   }
 
@@ -438,7 +438,7 @@ function renderBoughtActivities(items) {
     })
     .join('');
 
-  boughtInfoEl.textContent = `Total bought activity: ${boughtActivities.length}`;
+  boughtInfoEl.textContent = `Global market buys: ${boughtActivities.length}`;
 }
 
 function updateFooter() {
@@ -538,14 +538,8 @@ async function loadPortfolio() {
 }
 
 async function loadBoughtActivities() {
-  if (!wallets.length) {
-    renderBoughtActivities([]);
-    return;
-  }
-
-  const owners = wallets.map((w) => w.pubkey).join(',');
   statusEl.textContent = 'Loading bought activity...';
-  const res = await fetch(`/api/activity/bought?owners=${encodeURIComponent(owners)}&page=1&limit=120`, {
+  const res = await fetch('/api/activity/bought?page=1&limit=120', {
     cache: 'no-store',
   });
   const payload = await res.json();
@@ -774,7 +768,7 @@ function startPolling() {
     getListings(1, 'replace').catch(() => {});
     if (currentView === 'assets' && wallets.length > 0) {
       loadPortfolio().catch(() => {});
-    } else if (currentView === 'bought' && wallets.length > 0) {
+    } else if (currentView === 'bought') {
       loadBoughtActivities().catch(() => {});
     }
   }, POLL_MS);
