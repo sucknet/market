@@ -250,6 +250,34 @@
         grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
         gap: 10px;
       }
+
+      .portfolio-tools {
+        margin-top: 12px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .portfolio-tools button {
+        font-size: 12px;
+        padding: 7px 10px;
+      }
+
+      .pick-row {
+        margin-top: 6px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .pick-row input[type="number"] {
+        width: 88px;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 4px 6px;
+        font-size: 12px;
+      }
     </style>
   </head>
   <body>
@@ -298,6 +326,13 @@
       </section>
 
       <section id="myAssetsSection" hidden>
+        <div class="portfolio-tools">
+          <button id="bulkListSelectedBtn" type="button">Bulk List Selected</button>
+          <button id="bulkDelistSelectedBtn" type="button">Bulk Delist Selected</button>
+          <button id="selectAllOwnedBtn" type="button">Select All Listable</button>
+          <button id="selectAllListedBtn" type="button">Select All Delistable</button>
+          <button id="clearSelectionBtn" type="button">Clear Selection</button>
+        </div>
         <div id="myAssetsEmpty" class="empty" hidden>No NFT assets found in connected wallet.</div>
         <div id="myAssetsGrid"></div>
         <div class="foot">

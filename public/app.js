@@ -20,6 +20,11 @@ const myAssetsSection = document.getElementById('myAssetsSection');
 const myAssetsGridEl = document.getElementById('myAssetsGrid');
 const myAssetsEmptyEl = document.getElementById('myAssetsEmpty');
 const myAssetsInfoEl = document.getElementById('myAssetsInfo');
+const bulkListSelectedBtn = document.getElementById('bulkListSelectedBtn');
+const bulkDelistSelectedBtn = document.getElementById('bulkDelistSelectedBtn');
+const selectAllOwnedBtn = document.getElementById('selectAllOwnedBtn');
+const selectAllListedBtn = document.getElementById('selectAllListedBtn');
+const clearSelectionBtn = document.getElementById('clearSelectionBtn');
 
 let timer = null;
 let refreshMs = 5000;
@@ -36,6 +41,8 @@ let defaultCollection = '';
 let currentView = 'market';
 let portfolioAssets = [];
 let portfolioCollectionStats = {};
+let portfolioNameStats = {};
+let portfolioSummary = { totalEstimatedFloorValue: 0 };
 const POLL_MS = 5000;
 
 const wallets = [];
@@ -238,9 +245,11 @@ function renderMarketCards(listings, mode = 'replace') {
   }
 }
 
-function renderPortfolioAssets(items, collectionStats = {}) {
+function renderPortfolioAssets(items, collectionStats = {}, nameStats = {}, summary = {}) {
   portfolioAssets = items || [];
   portfolioCollectionStats = collectionStats || {};
+  portfolioNameStats = nameStats || {};
+  portfolioSummary = summary || { totalEstimatedFloorValue: 0 };
   myAssetsEmptyEl.hidden = portfolioAssets.length > 0;
 
   const byCollection = new Map();
@@ -270,6 +279,9 @@ function renderPortfolioAssets(items, collectionStats = {}) {
       const groupedCards = [...byName.entries()]
         .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
         .map(([name, groupItems]) => {
+          const nameStat = portfolioNameStats[name] || {};
+          const groupFloor = nameStat.floorPriceUi;
+          const groupValue = Number(nameStat.estimatedFloorValue || 0);
           const cardsHtml = groupItems
             .map((item) => {
               const actionLabel = item.status === 'listed' ? 'Delist' : 'Listing';
@@ -277,6 +289,8 @@ function renderPortfolioAssets(items, collectionStats = {}) {
               const payloadAttr = item.status === 'listed'
                 ? `data-listing="${esc(item.listingAddress || '')}"`
                 : `data-mint="${esc(item.mint)}" data-collection="${esc(item.collection || defaultCollection || '')}"`;
+              const actionType = item.status === 'listed' ? 'delist' : 'list';
+              const defaultPrice = groupFloor == null ? '10' : String(groupFloor);
               const secondary = item.status === 'listed'
                 ? `Listed at ${item.priceUi || '-'} wFOGO`
                 : (item.inEscrow ? 'In escrow' : 'In wallet');
@@ -288,6 +302,10 @@ function renderPortfolioAssets(items, collectionStats = {}) {
                     <div class="row">Wallet: ${short(item.owner)}</div>
                     <div class="row">Mint: ${short(item.mint)}</div>
                     <div class="row">${esc(secondary)}</div>
+                    <div class="pick-row">
+                      <input type="checkbox" class="assetSelect" data-action="${actionType}" data-owner="${esc(item.owner)}" data-mint="${esc(item.mint)}" data-listing="${esc(item.listingAddress || '')}" data-collection="${esc(item.collection || defaultCollection || '')}" />
+                      ${item.status === 'listed' ? '<span class="row">Pick to bulk delist</span>' : `<input type="number" class="itemPriceInput" min="0" step="0.000000001" value="${esc(defaultPrice)}" /><span class="row">wFOGO</span>`}
+                    </div>
                     <div class="actions">
                       <button type="button" class="${actionClass}" data-owner="${esc(item.owner)}" ${payloadAttr}>${actionLabel}</button>
                     </div>
@@ -299,7 +317,7 @@ function renderPortfolioAssets(items, collectionStats = {}) {
 
           return `
             <div class="asset-name-group">
-              <div class="asset-name-title">${esc(name)} (${groupItems.length})</div>
+              <div class="asset-name-title">${esc(name)} (${groupItems.length}) | Floor: ${groupFloor == null ? '-' : `${groupFloor} wFOGO`} | Value: ${groupValue.toFixed(3)} wFOGO</div>
               <div class="asset-card-grid">${cardsHtml}</div>
             </div>
           `;
@@ -312,10 +330,6 @@ function renderPortfolioAssets(items, collectionStats = {}) {
             <div>Collection: ${esc(collection)}</div>
             <div>My assets: ${itemsInCollection.length}</div>
             <div>Floor: ${floor == null ? '-' : `${floor} wFOGO`}</div>
-            <div class="bulk">
-              <button type="button" class="bulkListBtn" data-collection="${esc(collection)}">Bulk List</button>
-              <button type="button" class="bulkDelistBtn" data-collection="${esc(collection)}">Bulk Delist</button>
-            </div>
           </div>
           ${groupedCards}
         </section>
@@ -324,6 +338,8 @@ function renderPortfolioAssets(items, collectionStats = {}) {
     .join('');
 
   myAssetsInfoEl.textContent = `Total assets: ${portfolioAssets.length} | Collections: ${byCollection.size}`;
+  const totalValue = Number(portfolioSummary.totalEstimatedFloorValue || 0);
+  myAssetsInfoEl.textContent += ` | Total floor value: ${totalValue.toFixed(3)} wFOGO`;
   myAssetsGridEl.innerHTML = collectionBlocks;
 }
 
@@ -387,7 +403,7 @@ async function getListings(page = 1, mode = 'replace') {
 
 async function loadPortfolio() {
   if (!wallets.length) {
-    renderPortfolioAssets([]);
+    renderPortfolioAssets([], {}, {}, {});
     myAssetsInfoEl.textContent = 'Add at least 1 wallet to load assets.';
     return;
   }
@@ -399,7 +415,12 @@ async function loadPortfolio() {
   if (!payload.ok) {
     throw new Error(payload.error || 'Failed to load portfolio');
   }
-  renderPortfolioAssets(payload?.data?.assets || [], payload?.data?.collectionStats || {});
+  renderPortfolioAssets(
+    payload?.data?.assets || [],
+    payload?.data?.collectionStats || {},
+    payload?.data?.nameStats || {},
+    payload?.data?.summary || {}
+  );
   statusEl.textContent = 'Live';
 }
 
@@ -466,73 +487,6 @@ async function onMarketGridClick(event) {
 }
 
 async function onPortfolioGridClick(event) {
-  const bulkListBtn = event.target.closest('.bulkListBtn');
-  if (bulkListBtn) {
-    const collection = bulkListBtn.getAttribute('data-collection') || '';
-    if (!collection) {
-      return;
-    }
-    const targets = portfolioAssets.filter((x) =>
-      (x.collectionLabel || deriveCollectionLabel(x.name, x.collection)) === collection && x.status !== 'listed'
-    );
-    if (!targets.length) {
-      alert('Tidak ada aset yang bisa di-list di koleksi ini.');
-      return;
-    }
-    const priceText = prompt(`Input price wFOGO untuk bulk listing ${targets.length} aset:`, '10');
-    if (priceText === null) {
-      return;
-    }
-    const priceUi = Number(priceText);
-    if (!Number.isFinite(priceUi) || priceUi <= 0) {
-      alert('Price harus lebih dari 0');
-      return;
-    }
-
-    try {
-      for (const target of targets) {
-        await executeTrade('list', target.owner, {
-          assetMint: target.mint,
-          collection: target.collection || defaultCollection,
-          priceUi,
-        });
-      }
-      await loadPortfolio();
-      await getListings(1, 'replace');
-    } catch (error) {
-      statusEl.textContent = 'bulk list failed';
-      alert(`Bulk list gagal: ${error.message || error}`);
-    }
-    return;
-  }
-
-  const bulkDelistBtn = event.target.closest('.bulkDelistBtn');
-  if (bulkDelistBtn) {
-    const collection = bulkDelistBtn.getAttribute('data-collection') || '';
-    if (!collection) {
-      return;
-    }
-    const targets = portfolioAssets.filter((x) =>
-      (x.collectionLabel || deriveCollectionLabel(x.name, x.collection)) === collection && x.status === 'listed' && x.listingAddress
-    );
-    if (!targets.length) {
-      alert('Tidak ada listing aktif untuk di-delist di koleksi ini.');
-      return;
-    }
-
-    try {
-      for (const target of targets) {
-        await executeTrade('delist', target.owner, { listingAddress: target.listingAddress });
-      }
-      await loadPortfolio();
-      await getListings(1, 'replace');
-    } catch (error) {
-      statusEl.textContent = 'bulk delist failed';
-      alert(`Bulk delist gagal: ${error.message || error}`);
-    }
-    return;
-  }
-
   const delistBtn = event.target.closest('.assetDelistBtn');
   if (delistBtn) {
     const owner = delistBtn.getAttribute('data-owner') || '';
@@ -563,11 +517,9 @@ async function onPortfolioGridClick(event) {
     return;
   }
 
-  const priceText = prompt('Input price wFOGO untuk listing:', '10');
-  if (priceText === null) {
-    return;
-  }
-  const priceUi = Number(priceText);
+  const card = listBtnEl.closest('.card');
+  const inlinePrice = card?.querySelector('.itemPriceInput')?.value || '0';
+  const priceUi = Number(inlinePrice);
   if (!Number.isFinite(priceUi) || priceUi <= 0) {
     alert('Price harus lebih dari 0');
     return;
@@ -580,6 +532,68 @@ async function onPortfolioGridClick(event) {
   } catch (error) {
     statusEl.textContent = 'list failed';
     alert(`List gagal: ${error.message || error}`);
+  }
+}
+
+async function onBulkListSelected() {
+  const selected = [...myAssetsGridEl.querySelectorAll('.assetSelect:checked')]
+    .filter((el) => el.dataset.action === 'list');
+  if (!selected.length) {
+    alert('Pilih minimal 1 NFT listable dulu.');
+    return;
+  }
+
+  try {
+    for (const cb of selected) {
+      const owner = cb.dataset.owner || '';
+      const mint = cb.dataset.mint || '';
+      const collection = cb.dataset.collection || defaultCollection;
+      const card = cb.closest('.card');
+      const priceUi = Number(card?.querySelector('.itemPriceInput')?.value || '0');
+      if (!owner || !mint || !Number.isFinite(priceUi) || priceUi <= 0) {
+        continue;
+      }
+      await executeTrade('list', owner, { assetMint: mint, collection, priceUi });
+    }
+    await loadPortfolio();
+    await getListings(1, 'replace');
+  } catch (error) {
+    statusEl.textContent = 'bulk list failed';
+    alert(`Bulk list gagal: ${error.message || error}`);
+  }
+}
+
+async function onBulkDelistSelected() {
+  const selected = [...myAssetsGridEl.querySelectorAll('.assetSelect:checked')]
+    .filter((el) => el.dataset.action === 'delist');
+  if (!selected.length) {
+    alert('Pilih minimal 1 NFT delistable dulu.');
+    return;
+  }
+
+  try {
+    for (const cb of selected) {
+      const owner = cb.dataset.owner || '';
+      const listingAddress = cb.dataset.listing || '';
+      if (!owner || !listingAddress) {
+        continue;
+      }
+      await executeTrade('delist', owner, { listingAddress });
+    }
+    await loadPortfolio();
+    await getListings(1, 'replace');
+  } catch (error) {
+    statusEl.textContent = 'bulk delist failed';
+    alert(`Bulk delist gagal: ${error.message || error}`);
+  }
+}
+
+function selectByAction(action, checked) {
+  const boxes = [...myAssetsGridEl.querySelectorAll('.assetSelect')];
+  for (const box of boxes) {
+    if (box.dataset.action === action) {
+      box.checked = checked;
+    }
   }
 }
 
@@ -614,6 +628,16 @@ loadMoreBtn.addEventListener('click', loadMore);
 addWalletBtn.addEventListener('click', onAddWallet);
 gridEl.addEventListener('click', onMarketGridClick);
 myAssetsGridEl.addEventListener('click', onPortfolioGridClick);
+bulkListSelectedBtn.addEventListener('click', onBulkListSelected);
+bulkDelistSelectedBtn.addEventListener('click', onBulkDelistSelected);
+selectAllOwnedBtn.addEventListener('click', () => selectByAction('list', true));
+selectAllListedBtn.addEventListener('click', () => selectByAction('delist', true));
+clearSelectionBtn.addEventListener('click', () => {
+  const boxes = myAssetsGridEl.querySelectorAll('.assetSelect');
+  boxes.forEach((x) => {
+    x.checked = false;
+  });
+});
 menuMarketBtn.addEventListener('click', () => setView('market'));
 menuMyAssetsBtn.addEventListener('click', async () => {
   setView('assets');
@@ -637,7 +661,7 @@ sortSelectEl.addEventListener('change', () => {
 
 (async () => {
   updateWalletUi();
-  renderPortfolioAssets([], {});
+  renderPortfolioAssets([], {}, {}, {});
   await getListings(1, 'replace');
   startPolling();
 })();

@@ -210,21 +210,13 @@ function getCollectionActivityPda(collectionPk, totalActivities) {
 }
 
 async function decodeProgramAccount(accountName, pubkey) {
-  const cacheKey = `${accountName}:${pubkey.toBase58()}`;
-  if (state.accountDecodeCache.has(cacheKey)) {
-    return state.accountDecodeCache.get(cacheKey);
-  }
-
   const info = await connection.getAccountInfo(pubkey, 'confirmed');
   if (!info) {
-    state.accountDecodeCache.set(cacheKey, null);
     return null;
   }
 
   const coder = new BorshAccountsCoder(state.idl);
-  const value = coder.decode(accountName, info.data);
-  state.accountDecodeCache.set(cacheKey, value);
-  return value;
+  return coder.decode(accountName, info.data);
 }
 
 function buildInstructionByIdl(ixName, accountsByName, args = {}) {
@@ -458,6 +450,9 @@ async function buildUnsignedTxBase64({ wallet, action, payload }) {
     state.instructionMap = toInstructionMap(state.idl);
     state.bootstrapped = true;
   }
+
+  // Never reuse decoded PDA counters between tx builds; these counters mutate every list/buy/unlist.
+  state.accountDecodeCache.clear();
 
   let instruction;
   if (action === 'buy') {
@@ -1261,6 +1256,59 @@ function buildCollectionStats(assets) {
   return result;
 }
 
+function buildNameStats(assets) {
+  const active = getActiveListingsSorted();
+  const neededNames = new Set(
+    assets
+      .map((x) => String(x.name || '').trim())
+      .filter(Boolean)
+  );
+
+  const floorByName = new Map();
+  const activeCountByName = new Map();
+  for (const row of active) {
+    const key = String(row.name || '').trim();
+    if (!key || !neededNames.has(key)) {
+      continue;
+    }
+    const price = Number(row.priceUi || 0);
+    if (!floorByName.has(key) || price < floorByName.get(key)) {
+      floorByName.set(key, price);
+    }
+    activeCountByName.set(key, Number(activeCountByName.get(key) || 0) + 1);
+  }
+
+  const myCountByName = new Map();
+  for (const item of assets) {
+    const key = String(item.name || '').trim();
+    if (!key) {
+      continue;
+    }
+    myCountByName.set(key, Number(myCountByName.get(key) || 0) + 1);
+  }
+
+  const stats = {};
+  let totalEstimatedFloorValue = 0;
+  for (const name of neededNames) {
+    const floor = floorByName.has(name) ? floorByName.get(name) : null;
+    const myAssets = Number(myCountByName.get(name) || 0);
+    const estimatedFloorValue = floor == null ? 0 : floor * myAssets;
+    totalEstimatedFloorValue += estimatedFloorValue;
+    stats[name] = {
+      name,
+      floorPriceUi: floor,
+      activeListings: Number(activeCountByName.get(name) || 0),
+      myAssets,
+      estimatedFloorValue,
+    };
+  }
+
+  return {
+    stats,
+    totalEstimatedFloorValue,
+  };
+}
+
 function applyFilterAndSort(listings, q, sort) {
   let result = listings;
 
@@ -1413,6 +1461,9 @@ const server = http.createServer(async (req, res) => {
         combined = combined.concat(rows);
       }
 
+      const collectionStats = buildCollectionStats(combined);
+      const nameStatsResult = buildNameStats(combined);
+
       return json(res, 200, {
         ok: true,
         owners,
@@ -1420,7 +1471,11 @@ const server = http.createServer(async (req, res) => {
         data: {
           byOwner,
           assets: combined,
-          collectionStats: buildCollectionStats(combined),
+          collectionStats,
+          nameStats: nameStatsResult.stats,
+          summary: {
+            totalEstimatedFloorValue: nameStatsResult.totalEstimatedFloorValue,
+          },
         },
       });
     } catch (error) {
