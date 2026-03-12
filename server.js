@@ -20,8 +20,8 @@ const REFRESH_MS = Number(process.env.REFRESH_MS || '5000');
 const BACKFILL_BATCH = Number(process.env.BACKFILL_BATCH || '100');
 const HEAD_BATCH = Number(process.env.HEAD_BATCH || '100');
 const ENRICH_PER_TICK = Number(process.env.ENRICH_PER_TICK || '24');
-const TX_CONCURRENCY = Number(process.env.TX_CONCURRENCY || '10');
-const BACKFILL_STEPS_PER_TICK = Number(process.env.BACKFILL_STEPS_PER_TICK || '4');
+const TX_CONCURRENCY = Number(process.env.TX_CONCURRENCY || '6');
+const BACKFILL_STEPS_PER_TICK = Number(process.env.BACKFILL_STEPS_PER_TICK || '2');
 const BACKFILL_TIME_BUDGET_MS = Number(process.env.BACKFILL_TIME_BUDGET_MS || '3500');
 const DEFAULT_PAGE_SIZE = Number(process.env.PAGE_SIZE || '60');
 const PUBLIC_DIR = path.join(process.cwd(), 'public');
@@ -44,7 +44,7 @@ const COLLECTION_FILTER =
 const DEFAULT_CURRENCY_MINT =
   process.env.DEFAULT_CURRENCY_MINT || 'So11111111111111111111111111111111111111112';
 const MAX_BUY_ACTIVITY = Number(process.env.MAX_BUY_ACTIVITY || '5000');
-const ACTIVE_VERIFY_TTL_MS = Number(process.env.ACTIVE_VERIFY_TTL_MS || '20000');
+const ACTIVE_VERIFY_TTL_MS = Number(process.env.ACTIVE_VERIFY_TTL_MS || '30000');
 const FOGO_FISH_NAMES = [
   'Bluegill',
   'Freshwater Drum',
@@ -886,13 +886,11 @@ async function verifyListingStillActive(row) {
   };
 }
 
-async function getVerifiedActiveListings(q, sort) {
-  const source = applyFilterAndSort(getActiveListingsSorted(), q, sort);
-  if (!source.length) {
+async function verifyListingsPage(pageItems) {
+  if (!Array.isArray(pageItems) || !pageItems.length) {
     return [];
   }
-
-  const checked = await mapConcurrent(source, 16, async (row) => verifyListingStillActive(row));
+  const checked = await mapConcurrent(pageItems, 6, async (row) => verifyListingStillActive(row));
   return checked.filter(Boolean);
 }
 
@@ -1665,16 +1663,16 @@ const server = http.createServer(async (req, res) => {
     const q = String(url.searchParams.get('q') || '').trim().toLowerCase();
     const sort = String(url.searchParams.get('sort') || 'newest');
 
-    const active = await getVerifiedActiveListings(q, sort);
+    const active = applyFilterAndSort(getActiveListingsSorted(), q, sort);
 
     const start = (page - 1) * limit;
     const end = start + limit;
-    const pageItems = active.slice(start, end);
+    const pageItems = await verifyListingsPage(active.slice(start, end));
 
     // Ensure items visible on the page are enriched aggressively.
     await enrichPageListings(pageItems);
-    const freshActive = await getVerifiedActiveListings(q, sort);
-    const freshPageItems = freshActive.slice(start, end);
+    const freshActive = applyFilterAndSort(getActiveListingsSorted(), q, sort);
+    const freshPageItems = await verifyListingsPage(freshActive.slice(start, end));
 
     return json(res, 200, {
       ok: state.bootstrapped,
