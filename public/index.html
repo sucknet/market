@@ -12,16 +12,19 @@
     <title>Fogo Fish Live Market</title>
     <style>
       :root {
-        --bg: #f5f4ef;
-        --bg-2: #eceee6;
-        --ink: #1a2c2a;
-        --muted: #546c67;
-        --card: #fffcf6;
-        --line: #d6ddd3;
-        --accent: #0f766e;
-        --accent-soft: #d8f3ee;
-        --action: #f4a54f;
-        --shadow: 0 10px 28px rgba(20, 54, 50, 0.08);
+        --bg: #f3f6f9;
+        --panel: #ffffff;
+        --panel-2: #f8fafc;
+        --ink: #0f172a;
+        --muted: #5b6b82;
+        --line: #dbe3ec;
+        --line-strong: #c9d6e6;
+        --brand: #0b4a6f;
+        --brand-soft: #e1f0fa;
+        --cta: #ed9d44;
+        --cta-border: #cb7d24;
+        --shadow-sm: 0 3px 10px rgba(15, 23, 42, 0.05);
+        --shadow-md: 0 16px 40px rgba(11, 31, 56, 0.08);
       }
 
       * {
@@ -30,91 +33,100 @@
 
       body {
         margin: 0;
-        font-family: "Space Grotesk", "Century Gothic", sans-serif;
+        font-family: "Space Grotesk", "Segoe UI", sans-serif;
         color: var(--ink);
         background:
-          radial-gradient(circle at 8% 12%, #fff0d7 0%, transparent 30%),
-          radial-gradient(circle at 88% 8%, #d7f1ea 0%, transparent 34%),
-          linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+          radial-gradient(circle at 2% 8%, #d8e9f7 0%, transparent 32%),
+          radial-gradient(circle at 98% 2%, #f6e4cf 0%, transparent 28%),
+          linear-gradient(180deg, #f5f8fb 0%, #edf2f8 100%);
       }
 
       .wrap {
-        max-width: 1240px;
+        max-width: 1260px;
         margin: 0 auto;
         padding: 22px;
       }
 
       .head {
         display: flex;
-        flex-wrap: wrap;
-        gap: 14px;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
-        padding: 14px;
-        border: 1px solid var(--line);
-        border-radius: 18px;
-        background: linear-gradient(145deg, #fffef9, #f8f7f1);
-        box-shadow: var(--shadow);
+        gap: 16px;
+        padding: 18px;
+        border: 1px solid var(--line-strong);
+        border-radius: 16px;
+        background: linear-gradient(180deg, #ffffff 0%, #f7fafd 100%);
+        box-shadow: var(--shadow-md);
+      }
+
+      .title-block {
+        display: grid;
+        gap: 5px;
       }
 
       h1 {
         margin: 0;
-        letter-spacing: 0.3px;
-        font-size: clamp(1.2rem, 2.2vw, 1.7rem);
+        font-size: clamp(1.2rem, 2.4vw, 1.75rem);
+        letter-spacing: 0.2px;
+      }
+
+      .subtitle {
+        margin: 0;
+        font-size: 12px;
+        color: var(--muted);
       }
 
       .meta {
         display: flex;
-        gap: 10px;
         flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 8px;
       }
 
-      .tools {
+      .pill {
+        background: #ffffff;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 7px 11px;
+        font-size: 12px;
+        color: #1e2b3f;
+      }
+
+      .tools,
+      .portfolio-tools {
         margin-top: 14px;
         display: flex;
         gap: 10px;
         flex-wrap: wrap;
+        align-items: center;
         padding: 12px;
         border: 1px solid var(--line);
         border-radius: 14px;
-        background: rgba(255, 255, 255, 0.68);
-        backdrop-filter: blur(4px);
+        background: rgba(255, 255, 255, 0.82);
+        box-shadow: var(--shadow-sm);
       }
 
       .menu {
         margin-top: 14px;
         display: flex;
-        gap: 8px;
+        gap: 6px;
         padding: 4px;
-        border-radius: 12px;
         width: fit-content;
-        background: #ebf1ec;
-        border: 1px solid #d2ddd2;
-      }
-
-      .menu button.active {
-        background: linear-gradient(145deg, #168c83, #0f766e);
-        color: #f4fffd;
-        border-color: transparent;
-      }
-
-      .trade {
-        margin-top: 10px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
+        border: 1px solid var(--line-strong);
+        border-radius: 12px;
+        background: #f2f6fa;
       }
 
       .tools input,
       .tools select,
-      .trade input {
-        background: #fff;
-        border: 1px solid var(--line);
+      .trade input,
+      .pick-row input[type="number"] {
+        background: #ffffff;
+        border: 1px solid var(--line-strong);
         border-radius: 10px;
         padding: 10px 12px;
         font-size: 13px;
         color: var(--ink);
-        transition: border-color 0.18s ease, box-shadow 0.18s ease;
       }
 
       .tools input:focus,
@@ -122,49 +134,45 @@
       .trade input:focus,
       .pick-row input[type="number"]:focus {
         outline: none;
-        border-color: #41a89f;
-        box-shadow: 0 0 0 3px rgba(65, 168, 159, 0.16);
+        border-color: #5b9fd1;
+        box-shadow: 0 0 0 3px rgba(91, 159, 209, 0.18);
       }
 
       .tools input {
-        min-width: 260px;
-      }
-
-      .trade input {
-        min-width: 180px;
-      }
-
-      .pill {
-        background: #fff;
-        border: 1px solid var(--line);
-        border-radius: 999px;
-        padding: 7px 11px;
-        font-size: 12px;
-        box-shadow: 0 2px 0 rgba(16, 44, 42, 0.04);
+        min-width: 280px;
       }
 
       button {
-        border: 1px solid #bb8860;
+        border: 1px solid var(--cta-border);
         border-radius: 10px;
-        background: linear-gradient(145deg, #f7b869, var(--action));
-        color: #2b1f11;
+        background: linear-gradient(180deg, #f7b464 0%, var(--cta) 100%);
+        color: #2f1f0c;
         font-weight: 700;
         padding: 8px 12px;
         cursor: pointer;
-        transition: transform 0.15s ease, filter 0.15s ease;
       }
 
-      button:hover {
-        filter: brightness(1.02);
-        transform: translateY(-1px);
+      #refreshBtn {
+        border-color: #0d628f;
+        background: linear-gradient(180deg, #2d88bd 0%, #146a9b 100%);
+        color: #f5fbff;
       }
 
-      button:active {
-        transform: translateY(0);
+      .menu button {
+        border: 1px solid transparent;
+        background: transparent;
+        color: #30435f;
       }
 
-      #grid {
-        margin-top: 18px;
+      .menu button.active {
+        border-color: #0d628f;
+        background: linear-gradient(180deg, #2d88bd 0%, #146a9b 100%);
+        color: #f4fbff;
+      }
+
+      #grid,
+      .activity-grid {
+        margin-top: 16px;
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
         gap: 14px;
@@ -177,75 +185,86 @@
         gap: 16px;
       }
 
-      #myAssetsSection[hidden] {
-        display: none;
-      }
-
-      .card {
-        background: var(--card);
+      .card,
+      .activity-card,
+      .asset-collection-block {
         border: 1px solid var(--line);
-        border-radius: 16px;
-        overflow: hidden;
-        box-shadow: var(--shadow);
+        border-radius: 14px;
+        background: var(--panel);
+        box-shadow: var(--shadow-sm);
       }
 
       .img {
         width: 100%;
         aspect-ratio: 1 / 1;
         object-fit: cover;
-        background: #edf2ee;
+        background: #e9f0f7;
       }
 
       .body {
-        padding: 11px;
+        padding: 12px;
       }
 
       .name {
-        font-size: 15px;
+        font-size: 16px;
         font-weight: 700;
-        margin-bottom: 6px;
+        margin: 0 0 6px;
       }
 
       .row {
         font-size: 12px;
         color: var(--muted);
+        line-height: 1.35;
       }
 
       .price {
-        color: var(--accent);
+        margin-top: 8px;
+        color: var(--brand);
         font-weight: 800;
-        margin-top: 6px;
+        font-size: 16px;
+      }
+
+      #grid .price,
+      .activity-card .price,
+      .asset-card-grid .price {
+        font-size: 16px;
+      }
+
+      #walletTools,
+      #walletFoot {
+        display: none !important;
       }
 
       .actions {
         margin-top: 10px;
         display: flex;
-        gap: 6px;
+        gap: 8px;
         flex-wrap: wrap;
       }
 
       .actions button {
         font-size: 12px;
-        padding: 6px 8px;
+        padding: 6px 9px;
       }
 
       .actions .rebel-link {
         display: inline-block;
         font-size: 12px;
-        padding: 6px 8px;
-        border: 1px solid #8fbeb8;
+        padding: 6px 9px;
+        border: 1px solid #8eb3cf;
         border-radius: 10px;
         text-decoration: none;
-        color: #0d4944;
-        background: var(--accent-soft);
+        color: #144f75;
+        background: var(--brand-soft);
       }
 
       .empty {
         margin-top: 16px;
-        background: #fff;
-        border: 1px dashed var(--line);
+        border: 1px dashed var(--line-strong);
         border-radius: 12px;
-        padding: 20px;
+        background: var(--panel-2);
+        color: var(--muted);
+        padding: 18px;
       }
 
       .foot {
@@ -262,9 +281,6 @@
       }
 
       .asset-collection-block {
-        background: rgba(255, 255, 255, 0.84);
-        border: 1px solid var(--line);
-        border-radius: 14px;
         padding: 12px;
       }
 
@@ -272,49 +288,23 @@
         display: flex;
         flex-wrap: wrap;
         gap: 10px;
+        margin-bottom: 10px;
         font-size: 12px;
         font-weight: 700;
-        margin-bottom: 10px;
-        color: #1a5550;
-      }
-
-      .asset-collection-head .bulk {
-        margin-left: auto;
-        display: flex;
-        gap: 6px;
-      }
-
-      .asset-collection-head .bulk button {
-        font-size: 11px;
-        padding: 5px 8px;
-      }
-
-      .asset-name-group {
-        margin-top: 8px;
+        color: #30435f;
       }
 
       .asset-name-title {
         font-size: 13px;
         font-weight: 700;
-        margin-bottom: 6px;
-        color: #194f4a;
+        margin-bottom: 7px;
+        color: #23364c;
       }
 
       .asset-card-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-        gap: 10px;
-      }
-
-      .portfolio-tools {
-        margin-top: 12px;
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        padding: 10px;
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        background: rgba(255, 255, 255, 0.75);
+        gap: 12px;
       }
 
       .portfolio-tools button {
@@ -323,42 +313,25 @@
       }
 
       .pick-row {
-        margin-top: 6px;
+        margin-top: 7px;
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
       }
 
       .pick-row input[type="number"] {
-        width: 88px;
-        background: #fff;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        padding: 4px 6px;
-        font-size: 12px;
+        width: 96px;
+        padding: 6px 8px;
       }
 
-      .activity-grid {
-        margin-top: 16px;
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-        gap: 12px;
-      }
+      @media (max-width: 920px) {
+        .head {
+          flex-direction: column;
+        }
 
-      .activity-card {
-        background: #fff;
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        overflow: hidden;
-        box-shadow: var(--shadow);
-      }
-
-      .activity-card .img {
-        aspect-ratio: 1 / 1;
-      }
-
-      .activity-card .body {
-        padding: 10px;
+        .meta {
+          justify-content: flex-start;
+        }
       }
 
       @media (max-width: 780px) {
@@ -366,23 +339,16 @@
           padding: 12px;
         }
 
-        .head {
-          padding: 10px;
-        }
-
-        .tools {
-          padding: 10px;
-        }
-
-        .tools input {
+        .tools input,
+        .tools select {
           min-width: 100%;
           width: 100%;
         }
 
-        .asset-card-grid,
         #grid,
+        .asset-card-grid,
         .activity-grid {
-          grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
         }
 
         .actions {
@@ -400,7 +366,10 @@
   <body>
     <div class="wrap">
       <div class="head">
-        <h1>Fogo Fish Live Listings</h1>
+        <div class="title-block">
+          <h1>Fogo Fish Market Terminal</h1>
+          <p class="subtitle">Realtime listings, portfolio tools, and global bought activity</p>
+        </div>
         <div class="meta">
           <span class="pill" id="status">Loading...</span>
           <span class="pill" id="count">0</span>
@@ -411,11 +380,11 @@
         </div>
       </div>
 
-      <div class="tools">
+      <div class="tools" id="walletTools" hidden>
         <input id="privateKeyInput" type="text" placeholder="Paste private key (base58 or [array])" />
         <button id="addWalletBtn" type="button">Add Wallet</button>
       </div>
-      <div class="foot">
+      <div class="foot" id="walletFoot" hidden>
         <span class="hint" id="walletListInfo">No wallet added</span>
       </div>
 

@@ -44,6 +44,43 @@ const COLLECTION_FILTER =
 const DEFAULT_CURRENCY_MINT =
   process.env.DEFAULT_CURRENCY_MINT || 'So11111111111111111111111111111111111111112';
 const MAX_BUY_ACTIVITY = Number(process.env.MAX_BUY_ACTIVITY || '5000');
+const ACTIVE_VERIFY_TTL_MS = Number(process.env.ACTIVE_VERIFY_TTL_MS || '20000');
+const FOGO_FISH_NAMES = [
+  'Bluegill',
+  'Freshwater Drum',
+  'Pumpkinseed Sunfish',
+  'Burbot',
+  'Crappie',
+  'Yellow Perch',
+  'Smallmouth Bass',
+  'Channel Catfish',
+  'Bullhead Catfish',
+  'Piranha',
+  'Flathead Catfish',
+  'Common Carp',
+  'Bowfin',
+  'Longnose Gar',
+  'Alligator Gar',
+  'Spotted Bass',
+  'Largemouth Bass',
+  'White Bass',
+  'Peacock Bass',
+  'Sauger',
+  'Walleye',
+  'Walleye (Large)',
+  'Oscar',
+  'Northern Pike',
+  'Muskellunge',
+  'Freshwater Eel',
+  'Giant Eel',
+  'Snakehead',
+  'Golden Dorado',
+  'River Sturgeon',
+  'Arapaima',
+  'Redtail Catfish',
+  'Silver Arowana',
+  'Old Boot',
+];
 
 const connection = new Connection(RPC_URL, 'confirmed');
 
@@ -59,6 +96,7 @@ const state = {
   backfillDone: false,
   processedSignatures: new Set(),
   listingsByAddress: new Map(),
+  listingActiveCache: new Map(),
   boughtActivities: [],
   metadataByMint: new Map(),
   accountDecodeCache: new Map(),
@@ -96,6 +134,21 @@ function sleep(ms) {
 
 function trimNulls(value) {
   return typeof value === 'string' ? value.replace(/\0/g, '').trim() : value;
+}
+
+function toCanonicalFishName(rawName) {
+  const original = trimNulls(rawName) || '';
+  const match = original.match(/#\s*(\d+)/i);
+  if (!match) {
+    return original;
+  }
+
+  const index = Number(match[1]);
+  if (!Number.isInteger(index) || index < 0 || index >= FOGO_FISH_NAMES.length) {
+    return original;
+  }
+
+  return `${FOGO_FISH_NAMES[index]} #${index}`;
 }
 
 function json(res, statusCode, body) {
@@ -625,6 +678,9 @@ async function fetchMetadataForMint(mint, options = {}) {
   const force = !!options.force;
   const cached = state.metadataByMint.get(mint);
   if (cached?.image) {
+    if (cached.name) {
+      cached.name = toCanonicalFishName(cached.name);
+    }
     return cached;
   }
 
@@ -685,7 +741,7 @@ async function fetchMetadataForMint(mint, options = {}) {
 
     const item = {
       mint,
-      name: trimNulls(metadata.name),
+      name: toCanonicalFishName(metadata.name),
       symbol: trimNulls(metadata.symbol),
       collection: metadata?.collection?.key ? String(metadata.collection.key) : null,
       metadataUri,
@@ -765,6 +821,79 @@ function applyListingEvent(event) {
     ...(prev || {}),
     ...event,
   });
+}
+
+function updateListingValidationCache(listingAddress, value) {
+  state.listingActiveCache.set(String(listingAddress), {
+    ...value,
+    checkedAt: Date.now(),
+  });
+}
+
+async function verifyListingStillActive(row) {
+  const listingAddress = String(row?.listingAddress || '');
+  if (!listingAddress) {
+    return null;
+  }
+
+  const cached = state.listingActiveCache.get(listingAddress);
+  if (cached && Date.now() - Number(cached.checkedAt || 0) < ACTIVE_VERIFY_TTL_MS) {
+    if (!cached.active) {
+      return null;
+    }
+    return {
+      ...row,
+      priceUi: cached.priceUi == null ? row.priceUi : cached.priceUi,
+      currencyMint: cached.currencyMint || row.currencyMint,
+      collection: cached.collection || row.collection,
+      seller: cached.seller || row.seller,
+    };
+  }
+
+  const decoded = await decodeListingAccount(listingAddress);
+  const active =
+    !!decoded &&
+    decoded.status === 'Active' &&
+    String(decoded.assetMint || '') === String(row.assetMint || '') &&
+    String(decoded.seller || '') === String(row.seller || '');
+
+  if (!active) {
+    applyListingEvent({
+      ...row,
+      status: decoded?.status || 'Unlisted',
+      slot: Number(row.slot || 0),
+      seq: Number(row.seq || 0),
+    });
+    updateListingValidationCache(listingAddress, { active: false });
+    return null;
+  }
+
+  updateListingValidationCache(listingAddress, {
+    active: true,
+    priceUi: decoded.priceUi,
+    currencyMint: decoded.currencyMint,
+    collection: decoded.collection,
+    seller: decoded.seller,
+  });
+
+  return {
+    ...row,
+    priceUi: decoded.priceUi,
+    currencyMint: decoded.currencyMint,
+    collection: decoded.collection,
+    seller: decoded.seller,
+    status: 'Active',
+  };
+}
+
+async function getVerifiedActiveListings(q, sort) {
+  const source = applyFilterAndSort(getActiveListingsSorted(), q, sort);
+  if (!source.length) {
+    return [];
+  }
+
+  const checked = await mapConcurrent(source, 16, async (row) => verifyListingStillActive(row));
+  return checked.filter(Boolean);
 }
 
 function applyBoughtEvent(event) {
@@ -1536,7 +1665,7 @@ const server = http.createServer(async (req, res) => {
     const q = String(url.searchParams.get('q') || '').trim().toLowerCase();
     const sort = String(url.searchParams.get('sort') || 'newest');
 
-    const active = applyFilterAndSort(getActiveListingsSorted(), q, sort);
+    const active = await getVerifiedActiveListings(q, sort);
 
     const start = (page - 1) * limit;
     const end = start + limit;
@@ -1544,7 +1673,7 @@ const server = http.createServer(async (req, res) => {
 
     // Ensure items visible on the page are enriched aggressively.
     await enrichPageListings(pageItems);
-    const freshActive = applyFilterAndSort(getActiveListingsSorted(), q, sort);
+    const freshActive = await getVerifiedActiveListings(q, sort);
     const freshPageItems = freshActive.slice(start, end);
 
     return json(res, 200, {
